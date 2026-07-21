@@ -457,10 +457,16 @@ class LocalDB {
   }
 
   // Auth Functions
+  // Auth Functions
   login(credential, password) {
     const users = this.getUsers();
-    // Credential can be email or phone
-    const user = users.find(u => (u.email === credential || u.phone === credential) && u.password === password);
+    // Normalize credential: trim whitespace and case‑insensitive email matching
+    const normalized = credential.trim();
+    const emailNorm = normalized.toLowerCase();
+    const user = users.find(u => (
+      (u.email && u.email.toLowerCase() === emailNorm) ||
+      (u.phone && u.phone === normalized)
+    ) && u.password === password);
     if (user) {
       return { success: true, user };
     }
