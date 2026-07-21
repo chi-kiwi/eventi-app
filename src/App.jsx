@@ -16,6 +16,19 @@ import { useLanguage } from './services/i18n.jsx';
 
 export default function App() {
   const { t, language, setLanguage } = useLanguage();
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('evt_theme') || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('evt_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('explore'); // explore, calendar, chats, dashboard, profile
   const [exploreView, setExploreView] = useState('list'); // list, map
@@ -346,6 +359,8 @@ export default function App() {
             notifications={notifications}
             unreadCount={unreadCount}
             onClearNotifications={handleClearNotifications}
+            theme={theme}
+            onToggleTheme={toggleTheme}
           />
 
           {/* Details Overlay View */}
@@ -548,7 +563,7 @@ export default function App() {
         </>
       ) : (
         // LOGIN / REGISTER SCREEN
-        <LoginRegistration onLoginSuccess={handleLoginSuccess} />
+        <LoginRegistration onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} />
       )}
     </div>
   );

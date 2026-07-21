@@ -4,8 +4,8 @@ import { db } from '../services/db';
 import LegalModal from './LegalModal';
 import { useLanguage } from '../services/i18n.jsx';
 
-export default function LoginRegistration({ onLoginSuccess }) {
-  const { language, t } = useLanguage();
+export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme }) {
+  const { language, setLanguage, t } = useLanguage();
   const [isLogin, setIsLogin] = useState(true);
   const [isRecover, setIsRecover] = useState(false);
   const [verifyStep, setVerifyStep] = useState(false); // verification flow
@@ -70,7 +70,8 @@ export default function LoginRegistration({ onLoginSuccess }) {
       setLoginError(language === 'en' ? "Please enter all credentials." : "Per favore, inserisci tutte le credenziali.");
       return;
     }
-    const res = db.login(loginCred, loginPass);
+    const cleanCred = loginCred.trim();
+    const res = db.login(cleanCred, loginPass);
     if (res.success) {
       onLoginSuccess(res.user);
     } else {
@@ -86,13 +87,19 @@ export default function LoginRegistration({ onLoginSuccess }) {
       return;
     }
 
+    const cleanEmail = regEmail.trim().toLowerCase();
+    const cleanPhone = regPhone.trim();
+    const cleanName = regName.trim();
+    const cleanCognome = regCognome.trim();
+    const cleanComune = regComune.trim();
+
     // Uniqueness checks in db (just pre-validation)
     const users = db.getUsers();
-    if (users.some(u => u.email === regEmail)) {
+    if (users.some(u => u.email && u.email.toLowerCase() === cleanEmail)) {
       setRegError(language === 'en' ? "This email is already registered." : "Questa email è già associata a un altro account.");
       return;
     }
-    if (users.some(u => u.phone === regPhone)) {
+    if (users.some(u => u.phone === cleanPhone)) {
       setRegError(language === 'en' ? "This phone number is already registered." : "Questo numero di telefono è già associato a un altro account.");
       return;
     }
@@ -103,11 +110,11 @@ export default function LoginRegistration({ onLoginSuccess }) {
 
     // Trigger verification simulator
     setTempUser({
-      name: regName,
-      cognome: regCognome,
-      email: regEmail,
-      phone: regPhone,
-      comune: regComune,
+      name: cleanName,
+      cognome: cleanCognome,
+      email: cleanEmail,
+      phone: cleanPhone,
+      comune: cleanComune,
       regione: regRegione,
       password: regPass,
       role: regRole,
@@ -141,13 +148,17 @@ export default function LoginRegistration({ onLoginSuccess }) {
   const handleRecoverySubmit = (e) => {
     e.preventDefault();
     setRecoveryError('');
+    const cleanContact = recoveryContact.trim().toLowerCase();
     if (recoveryStep === 1) {
       if (!recoveryContact) {
         setRecoveryError("Inserisci email o numero di telefono.");
         return;
       }
       const users = db.getUsers();
-      const userExists = users.some(u => u.email === recoveryContact || u.phone === recoveryContact);
+      const userExists = users.some(u => 
+        (u.email && u.email.toLowerCase() === cleanContact) || 
+        (u.phone === cleanContact)
+      );
       if (!userExists) {
         setRecoveryError("Nessun account associato a questo recapito.");
         return;
@@ -163,7 +174,7 @@ export default function LoginRegistration({ onLoginSuccess }) {
         setRecoveryError("Codice OTP errato. Usa '1234' per simulare.");
         return;
       }
-      const res = db.resetPassword(recoveryContact, recoveryNewPass);
+      const res = db.resetPassword(cleanContact, recoveryNewPass);
       if (res.success) {
         setRecoverySuccess("Password reimpostata con successo! Verrai reindirizzato al login.");
         setTimeout(() => {
@@ -181,9 +192,54 @@ export default function LoginRegistration({ onLoginSuccess }) {
     }
   };
 
+  const ThemeLangBar = () => (
+    <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 10 }}>
+      <button
+        onClick={onToggleTheme}
+        style={{
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--border-glass)',
+          borderRadius: '50%',
+          width: '36px',
+          height: '36px',
+          cursor: 'pointer',
+          color: 'var(--text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: 'var(--shadow-sm)'
+        }}
+        title={theme === 'light' ? (language === 'it' ? "Attiva modalità scura" : "Switch to dark mode") : (language === 'it' ? "Attiva modalità chiara" : "Switch to light mode")}
+      >
+        {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+      </button>
+
+      <button
+        onClick={() => setLanguage(language === 'it' ? 'en' : 'it')}
+        style={{
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--border-glass)',
+          borderRadius: '50%',
+          width: '36px',
+          height: '36px',
+          cursor: 'pointer',
+          fontSize: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: 'var(--shadow-sm)'
+        }}
+        title={language === 'it' ? "Switch to English" : "Cambia in Italiano"}
+      >
+        {language === 'it' ? '🇮🇹' : '🇬🇧'}
+      </button>
+    </div>
+  );
+
   if (verifyStep) {
     return (
-      <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '80vh' }}>
+      <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
+        <ThemeLangBar />
         <div className="glass-panel" style={{ padding: '30px', textAlign: 'center' }}>
           <div style={{ background: 'var(--gradient-primary)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
             <Mail size={30} color="white" />
@@ -229,12 +285,6 @@ export default function LoginRegistration({ onLoginSuccess }) {
               </button>
             </form>
           )}
-
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '20px' }}>
-            {language === 'en' 
-              ? "Tip: use simulation code 1234" 
-              : "Suggerimento: usa il codice simulatore 1234"} <strong style={{ color: 'var(--accent-primary)' }}>1234</strong>
-          </p>
         </div>
       </div>
     );
@@ -242,7 +292,8 @@ export default function LoginRegistration({ onLoginSuccess }) {
 
   if (isRecover) {
     return (
-      <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '80vh' }}>
+      <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
+        <ThemeLangBar />
         <div className="glass-panel" style={{ padding: '30px' }}>
           <h2 style={{ marginBottom: '8px', textAlign: 'center' }}>{language === 'en' ? "Password Recovery" : "Recupero Password"}</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', textAlign: 'center' }}>
@@ -318,19 +369,14 @@ export default function LoginRegistration({ onLoginSuccess }) {
               {language === 'en' ? "Back to Login" : "Torna al Login"}
             </button>
           </form>
-          
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '20px', textAlign: 'center' }}>
-            {language === 'en'
-              ? "Info: Any registered account accepts OTP 1234"
-              : "Info: Qualsiasi recapito esistente accetta l'OTP 1234"} <strong style={{ color: 'var(--accent-primary)' }}>1234</strong>
-          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh' }}>
+    <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
+      <ThemeLangBar />
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '32px', fontWeight: 800, background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>
           🎫 Eventi App
@@ -361,7 +407,6 @@ export default function LoginRegistration({ onLoginSuccess }) {
         </div>
 
         {isLogin ? (
-          // LOGIN FORM
           <form onSubmit={handleLoginSubmit}>
             <div className="form-group">
               <label className="form-label">{language === 'en' ? "Email or Phone" : "Email o Telefono"}</label>
@@ -383,19 +428,19 @@ export default function LoginRegistration({ onLoginSuccess }) {
               <div style={{ position: 'relative' }}>
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
                 <input 
-                  type={showPass ? 'text' : 'password'} 
+                  type={showPass ? "text" : "password"} 
                   className="form-input" 
-                  placeholder={language === 'en' ? "Enter your password" : "Inserisci la password"} 
+                  placeholder="••••••••" 
                   value={loginPass}
                   onChange={(e) => setLoginPass(e.target.value)}
                   style={{ paddingLeft: '42px', paddingRight: '40px' }}
                 />
                 <button 
-                  type="button" 
+                  type="button"
                   onClick={() => setShowPass(!showPass)}
                   style={{ position: 'absolute', right: '12px', top: '14px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
                 >
-                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -403,8 +448,8 @@ export default function LoginRegistration({ onLoginSuccess }) {
             <div style={{ textAlign: 'right', marginBottom: '20px' }}>
               <button 
                 type="button" 
-                onClick={() => { setIsRecover(true); setRecoveryError(''); }}
-                style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}
+                onClick={() => { setIsRecover(true); setLoginError(''); setRegError(''); }} 
+                style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
               >
                 {language === 'en' ? "Forgot password?" : "Password dimenticata?"}
               </button>
@@ -417,25 +462,28 @@ export default function LoginRegistration({ onLoginSuccess }) {
             </button>
           </form>
         ) : (
-          // REGISTRATION FORM
           <form onSubmit={handleRegisterSubmit}>
             <div style={{ display: 'flex', gap: '12px' }}>
               <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label">{t('name')}</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Mario" 
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                />
+                <label className="form-label">{language === 'en' ? "First Name" : "Nome"}</label>
+                <div style={{ position: 'relative' }}>
+                  <User size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder={language === 'en' ? "John" : "Mario"} 
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    style={{ paddingLeft: '42px' }}
+                  />
+                </div>
               </div>
               <div className="form-group" style={{ flex: 1 }}>
-                <label className="form-label">{t('cognome')}</label>
+                <label className="form-label">{language === 'en' ? "Last Name" : "Cognome"}</label>
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="Rossi" 
+                  placeholder={language === 'en' ? "Doe" : "Rossi"} 
                   value={regCognome}
                   onChange={(e) => setRegCognome(e.target.value)}
                 />
@@ -444,58 +492,70 @@ export default function LoginRegistration({ onLoginSuccess }) {
 
             <div className="form-group">
               <label className="form-label">Email</label>
-              <input 
-                type="email" 
-                className="form-input" 
-                placeholder="mario.rossi@email.com" 
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-              />
+              <div style={{ position: 'relative' }}>
+                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                <input 
+                  type="email" 
+                  className="form-input" 
+                  placeholder="nome@esempio.com" 
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  style={{ paddingLeft: '42px' }}
+                />
+              </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">{language === 'en' ? "Phone Number" : "Numero di Telefono"}</label>
-              <input 
-                type="tel" 
-                className="form-input" 
-                placeholder="3331234567" 
-                value={regPhone}
-                onChange={(e) => setRegPhone(e.target.value)}
-              />
+              <label className="form-label">{language === 'en' ? "Mobile Number" : "Numero di Telefono"}</label>
+              <div style={{ position: 'relative' }}>
+                <Phone size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                <input 
+                  type="tel" 
+                  className="form-input" 
+                  placeholder="3331234567" 
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  style={{ paddingLeft: '42px' }}
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <div className="form-group" style={{ flex: 1.2 }}>
-                <label className="form-label">{language === 'en' ? "City of residence" : "Comune di residenza"}</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Milano" 
-                  value={regComune}
-                  onChange={(e) => setRegComune(e.target.value)}
-                />
+                <label className="form-label">{language === 'en' ? "City" : "Comune"}</label>
+                <div style={{ position: 'relative' }}>
+                  <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder={language === 'en' ? "e.g. Milan" : "es. Saronno"} 
+                    value={regComune}
+                    onChange={(e) => setRegComune(e.target.value)}
+                    style={{ paddingLeft: '42px' }}
+                  />
+                </div>
               </div>
+
               <div className="form-group" style={{ flex: 0.8 }}>
-                <label className="form-label">{t('regione')}</label>
+                <label className="form-label">{language === 'en' ? "Region" : "Regione"}</label>
                 <select 
-                  className="form-input form-select"
+                  className="form-input form-select" 
                   value={regRegione}
                   onChange={(e) => setRegRegione(e.target.value)}
                 >
-                  {regionsList.map(r => (
-                    <option key={r} value={r}>{r}</option>
+                  {regionsList.map(reg => (
+                    <option key={reg} value={reg}>{reg}</option>
                   ))}
                 </select>
               </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">{language === 'en' ? "Account Role" : "Ruolo Account"}</label>
+              <label className="form-label">{language === 'en' ? "Account Type" : "Tipo Account"}</label>
               <select 
-                className="form-input form-select"
+                className="form-input form-select" 
                 value={regRole}
                 onChange={(e) => setRegRole(e.target.value)}
-                style={{ fontWeight: '600', color: 'var(--accent-primary)' }}
               >
                 <option value="utente">{t('role_user')}</option>
                 <option value="organizzatore">{t('role_organizer')}</option>
@@ -550,11 +610,6 @@ export default function LoginRegistration({ onLoginSuccess }) {
             <button type="submit" className="btn btn-primary">
               {language === 'en' ? "Create Account & Send Code" : "Crea Account ed Invia Codice"}
             </button>
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '12px', lineHeight: '1.4' }}>
-              {language === 'en' 
-                ? <>By registering, you agree to the <span onClick={() => setIsLegalOpen(true)} style={{ color: 'var(--accent-primary)', cursor: 'pointer', textDecoration: 'underline' }}>Terms of Service</span> and <span onClick={() => setIsLegalOpen(true)} style={{ color: 'var(--accent-primary)', cursor: 'pointer', textDecoration: 'underline' }}>GDPR Privacy Policy</span>.</>
-                : <>Registrandoti, dichiari di accettare i <span onClick={() => setIsLegalOpen(true)} style={{ color: 'var(--accent-primary)', cursor: 'pointer', textDecoration: 'underline' }}>Termini di Servizio</span> e la <span onClick={() => setIsLegalOpen(true)} style={{ color: 'var(--accent-primary)', cursor: 'pointer', textDecoration: 'underline' }}>Privacy Policy GDPR</span>.</>}
-            </p>
           </form>
         )}
       </div>

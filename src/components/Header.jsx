@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { LogOut, Award, Bell, BellRing, X, Info, User } from 'lucide-react';
+import { LogOut, Award, Bell, BellRing, X, Info, User, Sun, Moon } from 'lucide-react';
 import { useLanguage } from '../services/i18n.jsx';
 
-export default function Header({ user, onLogout, onTabChange, notifications = [], unreadCount = 0, onClearNotifications }) {
+export default function Header({ user, onLogout, onTabChange, notifications = [], unreadCount = 0, onClearNotifications, theme, onToggleTheme }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const { language, setLanguage, t } = useLanguage();
 
@@ -189,6 +189,23 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
             )}
           </div>
         )}
+
+        {/* Theme Switcher Button */}
+        <button
+          onClick={onToggleTheme}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-muted)',
+            padding: '6px',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          title={theme === 'light' ? (language === 'it' ? "Attiva modalità scura" : "Switch to dark mode") : (language === 'it' ? "Attiva modalità chiara" : "Switch to light mode")}
+        >
+          {theme === 'light' ? <Moon size={20} color="var(--text-muted)" /> : <Sun size={20} color="var(--text-muted)" />}
+        </button>
 
         {/* Language Switcher Flag */}
         <button

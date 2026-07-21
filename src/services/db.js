@@ -475,21 +475,23 @@ class LocalDB {
 
   register(userData) {
     const users = this.getUsers();
+    const cleanEmail = userData.email.trim().toLowerCase();
+    const cleanPhone = userData.phone.trim();
     // Check constraints
-    if (users.some(u => u.email === userData.email)) {
+    if (users.some(u => u.email && u.email.toLowerCase() === cleanEmail)) {
       return { success: false, message: "Questa email è già associata a un altro account." };
     }
-    if (users.some(u => u.phone === userData.phone)) {
+    if (users.some(u => u.phone === cleanPhone)) {
       return { success: false, message: "Questo numero di telefono è già associato a un altro account." };
     }
 
     const newUser = {
       id: "usr_" + Date.now(),
-      name: userData.name,
-      cognome: userData.cognome,
-      email: userData.email,
-      phone: userData.phone,
-      comune: userData.comune,
+      name: userData.name.trim(),
+      cognome: userData.cognome.trim(),
+      email: cleanEmail,
+      phone: cleanPhone,
+      comune: userData.comune.trim(),
       regione: userData.regione,
       password: userData.password,
       role: userData.role || "utente", // 'utente', 'organizzatore'
@@ -515,27 +517,43 @@ class LocalDB {
       return { success: false, message: "Password di sicurezza errata. Modifica rifiutata." };
     }
 
+    const cleanFields = { ...updatedFields };
+    if (cleanFields.email) {
+      cleanFields.email = cleanFields.email.trim().toLowerCase();
+    }
+    if (cleanFields.phone) {
+      cleanFields.phone = cleanFields.phone.trim();
+    }
+    if (cleanFields.name) cleanFields.name = cleanFields.name.trim();
+    if (cleanFields.cognome) cleanFields.cognome = cleanFields.cognome.trim();
+    if (cleanFields.comune) cleanFields.comune = cleanFields.comune.trim();
+
     // Check unique constraints if fields are updated
-    if (updatedFields.email && updatedFields.email !== users[index].email) {
-      if (users.some(u => u.email === updatedFields.email)) {
+    if (cleanFields.email && cleanFields.email !== users[index].email) {
+      if (users.some(u => u.email && u.email.toLowerCase() === cleanFields.email)) {
         return { success: false, message: "Questa email è già registrata." };
       }
     }
-    if (updatedFields.phone && updatedFields.phone !== users[index].phone) {
-      if (users.some(u => u.phone === updatedFields.phone)) {
+    if (cleanFields.phone && cleanFields.phone !== users[index].phone) {
+      if (users.some(u => u.phone === cleanFields.phone)) {
         return { success: false, message: "Questo numero di telefono è già registrato." };
       }
     }
 
     // Apply updates
-    users[index] = { ...users[index], ...updatedFields };
+    users[index] = { ...users[index], ...cleanFields };
     this.saveUsers(users);
     return { success: true, user: users[index] };
   }
 
   resetPassword(credential, newPassword) {
     const users = this.getUsers();
-    const index = users.findIndex(u => u.email === credential || u.phone === credential);
+    const normalized = credential.trim();
+    const emailNorm = normalized.toLowerCase();
+    const index = users.findIndex(u => 
+      (u.email && u.email.toLowerCase() === emailNorm) || 
+      (u.phone && u.phone === normalized)
+    );
     if (index === -1) return { success: false, message: "Nessun account associato a questo contatto." };
 
     users[index].password = newPassword;
