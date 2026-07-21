@@ -41,34 +41,43 @@ export default function App() {
   // Load and seed notifications for logged in user
   useEffect(() => {
     if (currentUser) {
-      const stored = localStorage.getItem(`evt_notifications_${currentUser.id}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setNotifications(parsed);
-        setUnreadCount(parsed.filter(n => !n.read).length);
-      } else {
-        const defaultNotifs = [
-          {
-            id: "notif_1",
-            title: "Benvenuto su EventiApp! 🎟️",
-            text: "Inizia a esplorare gli eventi della tua regione e accumula punti XP!",
-            timestamp: new Date().toISOString(),
-            type: "system",
-            read: false
-          },
-          {
-            id: "notif_2",
-            title: "Lega Argento Raggiunta! 🥈",
-            text: "Complimenti! Con 150 punti XP sei entrato nella Lega Argento. Sblocca badge per salire ancora!",
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-            type: "league",
-            read: false
+      try {
+        const stored = localStorage.getItem(`evt_notifications_${currentUser.id}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setNotifications(parsed);
+            setUnreadCount(parsed.filter(n => !n.read).length);
+            return;
           }
-        ];
-        setNotifications(defaultNotifs);
-        setUnreadCount(2);
-        localStorage.setItem(`evt_notifications_${currentUser.id}`, JSON.stringify(defaultNotifs));
+        }
+      } catch (e) {
+        console.error("Error loading notifications:", e);
       }
+      
+      const defaultNotifs = [
+        {
+          id: "notif_1",
+          title: "Benvenuto su EventiApp! 🎟️",
+          text: "Inizia a esplorare gli eventi della tua regione e accumula punti XP!",
+          timestamp: new Date().toISOString(),
+          type: "system",
+          read: false
+        },
+        {
+          id: "notif_2",
+          title: "Lega Argento Raggiunta! 🥈",
+          text: "Complimenti! Con 150 punti XP sei entrato nella Lega Argento. Sblocca badge per salire ancora!",
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          type: "league",
+          read: false
+        }
+      ];
+      setNotifications(defaultNotifs);
+      setUnreadCount(2);
+      try {
+        localStorage.setItem(`evt_notifications_${currentUser.id}`, JSON.stringify(defaultNotifs));
+      } catch (e) {}
     } else {
       setNotifications([]);
       setUnreadCount(0);
@@ -109,9 +118,14 @@ export default function App() {
     setEvents(db.getEvents());
     
     // Auto-login check (optional, but keep it clean)
-    const storedUser = localStorage.getItem("evt_current_user");
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
+    try {
+      const storedUser = localStorage.getItem("evt_current_user");
+      if (storedUser && storedUser !== "undefined") {
+        setCurrentUser(JSON.parse(storedUser));
+      }
+    } catch (e) {
+      console.error("Error parsing stored user:", e);
+      localStorage.removeItem("evt_current_user");
     }
   }, []);
 
