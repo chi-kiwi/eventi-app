@@ -133,7 +133,7 @@ export default function ChatTab({ user }) {
               <MessageSquare size={20} color="var(--accent-primary)" />
             </div>
             
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
                   {conv.otherUserName}

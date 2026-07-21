@@ -476,27 +476,29 @@ export default function App() {
                           </button>
                         </div>
                       )}
-                      {sortedEvents.map(evt => {
-                        const usersList = db.getUsers();
-                        const org = usersList.find(u => u.id === evt.organizerId);
-                        const isFeatured = org?.premium;
-                        
-                        return (
-                          <div key={evt.id} style={{ position: 'relative' }}>
-                            {isFeatured && (
-                              <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 5, background: 'var(--gradient-premium)', color: 'white', fontSize: '9px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '3px', boxShadow: 'var(--shadow-sm)' }}>
-                                <Sparkles size={10} /> {language === 'en' ? "FEATURED" : "IN EVIDENZA"}
-                              </div>
-                            )}
-                            <EventCard 
-                              event={evt} 
-                              user={currentUser} 
-                              onSelect={handleSelectEvent} 
-                              onToggleParticipation={handleToggleParticipation}
-                            />
-                          </div>
-                        );
-                      })}
+                      <div className="events-grid">
+                        {sortedEvents.map(evt => {
+                          const usersList = db.getUsers();
+                          const org = usersList.find(u => u.id === evt.organizerId);
+                          const isFeatured = org?.premium;
+                          
+                          return (
+                            <div key={evt.id} style={{ position: 'relative' }}>
+                              {isFeatured && (
+                                <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 5, background: 'var(--gradient-premium)', color: 'white', fontSize: '9px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '3px', boxShadow: 'var(--shadow-sm)' }}>
+                                  <Sparkles size={10} /> {language === 'en' ? "FEATURED" : "IN EVIDENZA"}
+                                </div>
+                              )}
+                              <EventCard 
+                                event={evt} 
+                                user={currentUser} 
+                                onSelect={handleSelectEvent} 
+                                onToggleParticipation={handleToggleParticipation}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
 
                       {sortedEvents.length === 0 && (
                         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '14px' }}>

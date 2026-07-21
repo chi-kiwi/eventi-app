@@ -671,6 +671,10 @@ class LocalDB {
     } else if (type === 'going') {
       const idx = event.goingUsers.indexOf(userId);
       if (idx === -1) {
+        // Enforce max capacity limit
+        if (event.maxCapacity && event.maxCapacity > 0 && event.goingUsers.length >= event.maxCapacity) {
+          return { success: false, message: "Spiacenti, i posti per questo evento sono esauriti (SOLD OUT)! 🚫" };
+        }
         event.goingUsers.push(userId);
         // remove from interested
         const intIdx = event.interestedUsers.indexOf(userId);

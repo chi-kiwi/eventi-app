@@ -57,7 +57,12 @@ export default function EventCard({ event, user, onSelect, onToggleParticipation
             className="event-poster" 
             onError={(e) => { e.target.onerror = null; e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' style='background:linear-gradient(135deg, %234f46e5 0%, %23ec4899 100%)'><text x='50%' y='50%' fill='white' font-size='24' font-family='sans-serif' text-anchor='middle' dy='.3em'>Eventi App 🎟️</text></svg>"; }}
           />
-          <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '6px' }}>
+          <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {event.maxCapacity > 0 && (
+              <span className="badge-pill" style={{ backgroundColor: event.goingUsers?.length >= event.maxCapacity ? '#ef4444' : 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 'bold' }}>
+                {event.goingUsers?.length >= event.maxCapacity ? '🚫 SOLD OUT' : `🎟️ ${event.maxCapacity - event.goingUsers.length} posti`}
+              </span>
+            )}
             <span className="badge-pill badge-category">{getCategoryLabel(event.category)}</span>
             <span className="badge-pill" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white' }}>
               {event.cost === 'Gratuito' && language === 'en' ? 'Free' : event.cost}

@@ -26,15 +26,17 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '4px', 
-                background: 'var(--bg-tertiary)', 
-                padding: '6px 10px', 
+                background: 'rgba(255, 255, 255, 0.12)', 
+                backdropFilter: 'blur(8px)',
+                padding: '6px 12px', 
                 borderRadius: '20px', 
                 cursor: 'pointer',
-                border: '1px solid var(--border-glass)'
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
               }}
             >
-              <Award size={14} color="var(--accent-orange)" />
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <Award size={14} color="#f59e0b" />
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>
                 {user.points} pt
               </span>
             </div>
@@ -46,11 +48,12 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '6px', 
-                background: 'var(--bg-tertiary)', 
-                padding: '4px 10px 4px 4px', 
+                background: 'rgba(255, 255, 255, 0.12)', 
+                backdropFilter: 'blur(8px)',
+                padding: '4px 12px 4px 4px', 
                 borderRadius: '20px', 
                 cursor: 'pointer',
-                border: '1px solid var(--border-glass)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 height: '32px'
               }}
             >
@@ -58,14 +61,14 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
                 <img 
                   src={user.avatar} 
                   alt="Avatar" 
-                  style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
+                  style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.4)' }} 
                 />
               ) : (
-                <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <User size={12} color="var(--text-secondary)" />
+                <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={12} color="#ffffff" />
                 </div>
               )}
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>
                 {user.name}
               </span>
               {user.premium && (
@@ -81,17 +84,20 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
             <button
               onClick={toggleNotifications}
               style={{
-                background: 'none',
-                border: 'none',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                border: '1px solid rgba(255,255,255,0.2)',
                 cursor: 'pointer',
-                color: unreadCount > 0 ? 'var(--accent-primary)' : 'var(--text-muted)',
+                color: unreadCount > 0 ? '#f43f5e' : '#e2e8f0',
                 display: 'flex',
                 alignItems: 'center',
-                padding: '6px',
+                justifyContent: 'center',
                 position: 'relative'
               }}
             >
-              {unreadCount > 0 ? <BellRing size={20} className="animate-fade-in" /> : <Bell size={20} />}
+              {unreadCount > 0 ? <BellRing size={18} className="animate-fade-in" color="#f43f5e" /> : <Bell size={18} color="#e2e8f0" />}
               {unreadCount > 0 && (
                 <span 
                   style={{ 
@@ -101,7 +107,7 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
                     width: '8px', 
                     height: '8px', 
                     borderRadius: '50%', 
-                    backgroundColor: 'var(--accent-pink)', 
+                    backgroundColor: '#f43f5e', 
                     border: '1px solid white' 
                   }} 
                 />
@@ -209,14 +215,14 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
             background: 'none', 
             border: 'none', 
             cursor: 'pointer', 
-            color: 'var(--text-muted)', 
+            color: '#e2e8f0', 
             display: 'flex', 
             alignItems: 'center',
             padding: '6px'
           }}
           title={t('logout')}
         >
-          <LogOut size={20} />
+          <LogOut size={20} color="#e2e8f0" />
         </button>
       </div>
     </header>

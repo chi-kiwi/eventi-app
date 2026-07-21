@@ -351,6 +351,56 @@ export default function ProfileTab({ user, onProfileUpdated }) {
         </div>
       </div>
 
+      {/* Album Ricordi & Memory Photo Wall */}
+      <div className="glass-panel" style={{ padding: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+            📸 {language === 'en' ? "My Memory Photo Wall" : "Album dei Miei Ricordi"}
+          </h3>
+          <span style={{ fontSize: '11px', background: 'var(--gradient-primary)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+            {user.goingEvents?.length || 0} {language === 'en' ? 'Events' : 'Eventi'}
+          </span>
+        </div>
+
+        {user.goingEvents && user.goingEvents.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
+            {db.getEvents()
+              .filter(e => user.goingEvents.includes(e.id))
+              .map(e => (
+                <div 
+                  key={e.id}
+                  className="glass-card"
+                  style={{
+                    padding: '8px',
+                    borderRadius: '10px',
+                    textAlign: 'center',
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--border-glass)'
+                  }}
+                >
+                  <img 
+                    src={e.poster || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300"} 
+                    alt={e.title}
+                    style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '6px', marginBottom: '6px' }}
+                  />
+                  <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {e.title}
+                  </p>
+                  <span style={{ fontSize: '9px', color: 'var(--accent-primary)', fontWeight: '600', display: 'block', marginTop: '2px' }}>
+                    🎟️ {e.date}
+                  </span>
+                </div>
+              ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+            {language === 'en' 
+              ? "You haven't joined any events yet. Join events to populate your memory album!" 
+              : "Non hai ancora partecipato a eventi. Iscriviti agli eventi per riempire il tuo album ricordo!"}
+          </p>
+        )}
+      </div>
+
       {/* Account Settings / Edit Profile Trigger */}
       <div className="glass-panel" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '15px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>

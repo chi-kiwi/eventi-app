@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Heart, Check, Bookmark, ArrowLeft, Shield, Map, ExternalLink, CalendarPlus, MessageSquare, Info, ShieldAlert, Plus, ChevronLeft, ChevronRight, X, Image as ImageIcon, User } from 'lucide-react';
+import { Calendar, MapPin, Heart, Check, Bookmark, ArrowLeft, Shield, Map, ExternalLink, CalendarPlus, MessageSquare, Info, ShieldAlert, Plus, ChevronLeft, ChevronRight, X, Image as ImageIcon, User, Share2, QrCode, Ticket, Copy, CheckCircle2 } from 'lucide-react';
 import { db } from '../services/db';
 import { useLanguage } from '../services/i18n.jsx';
+import { fetchLiveWeather } from '../services/weather';
 
 const PHOTO_PRESETS = [
   { name: "🍔 Street Food", url: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800" },
@@ -20,6 +21,12 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
 
+  // Share & Ticket Modals states
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [liveWeatherData, setLiveWeatherData] = useState(null);
+
   // Social board & photo likes states
   const [communityMessages, setCommunityMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
@@ -27,7 +34,10 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
 
   useEffect(() => {
     setCommunityMessages(db.getCommunityMessages(event.id));
-  }, [event.id]);
+    if (event.gps) {
+      fetchLiveWeather(event.gps.lat, event.gps.lng).then(data => setLiveWeatherData(data));
+    }
+  }, [event.id, event.gps]);
 
   const users = db.getUsers();
   const organizer = users.find(u => u.id === event.organizerId);
@@ -223,7 +233,12 @@ END:VCALENDAR`;
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
             onError={(e) => { e.target.onerror = null; e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' style='background:linear-gradient(135deg, %234f46e5 0%, %23ec4899 100%)'><text x='50%' y='50%' fill='white' font-size='24' font-family='sans-serif' text-anchor='middle' dy='.3em'>Eventi App 🎟️</text></svg>"; }}
           />
-          <div style={{ position: 'absolute', bottom: '16px', left: '20px', display: 'flex', gap: '8px' }}>
+          <div style={{ position: 'absolute', bottom: '16px', left: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {event.maxCapacity > 0 && (
+              <span className="badge-pill" style={{ backgroundColor: event.goingUsers?.length >= event.maxCapacity ? '#ef4444' : 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 'bold' }}>
+                {event.goingUsers?.length >= event.maxCapacity ? '🚫 SOLD OUT' : `🎟️ Posti: ${event.goingUsers?.length || 0} / ${event.maxCapacity}`}
+              </span>
+            )}
             <span className="badge-pill badge-category">{getCategoryLabel(event.category)}</span>
             <span className="badge-pill" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white' }}>
               {event.cost === 'Gratuito' && language === 'en' ? 'Free' : event.cost}
@@ -268,22 +283,37 @@ END:VCALENDAR`;
             </div>
           </div>
 
-          {/* Weather Widget */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderTop: '1px solid var(--border-glass)', paddingTop: '12px' }}>
-            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '8px', borderRadius: '8px', color: 'var(--accent-orange)', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px' }}>
-              {event.category === 'Escursioni' || event.category === 'Feste di paese' ? '☀️' : '⛅'}
+          {/* Enhanced Weather Widget */}
+          <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', padding: '8px', borderRadius: '12px', color: 'white', fontSize: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '42px', height: '42px', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)' }}>
+                {liveWeatherData ? liveWeatherData.icon : (event.category === 'Escursioni' || event.category === 'Feste di paese' ? '☀️' : '⛅')}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {t('weather_forecast')} 
+                  <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-orange)', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
+                    {liveWeatherData?.isLive ? 'Live API 🌤️' : 'Meteo Stimato 🌤️'}
+                  </span>
+                </p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                  {liveWeatherData ? (
+                    `${liveWeatherData.icon} ${language === 'en' ? liveWeatherData.descEn : liveWeatherData.descIt}, ${liveWeatherData.temp} • ${language === 'en' ? 'Wind' : 'Vento'} ${liveWeatherData.wind} • ${language === 'en' ? 'Rain' : 'Pioggia'} ${liveWeatherData.rainProb}`
+                  ) : (
+                    event.category === 'Escursioni' 
+                      ? (language === 'en' ? '☀️ Sunny, 22°C • Humidity 40% • Rain risk 5%' : '☀️ Soleggiato, 22°C • Umidità 40% • Rischio pioggia 5%') : 
+                     (language === 'en' ? '☀️ Clear Sky, 24°C • Humidity 35% • Wind 8 km/h' : '☀️ Sereno, 24°C • Umidità 35% • Vento 8 km/h')
+                  )}
+                </p>
+              </div>
             </div>
-            <div>
-              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{t('weather_forecast')}</p>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                {event.category === 'Escursioni' 
-                  ? (language === 'en' ? '☀️ Sunny, 22°C (Ideal for hiking)' : '☀️ Soleggiato, 22°C (Ideale per camminate)') : 
-                 event.category === 'Feste di paese' 
-                  ? (language === 'en' ? '☀️ Clear, 24°C (Outdoor area active!)' : '☀️ Sereno, 24°C (Area all\'aperto attiva!)') : 
-                 event.category === 'Street food' 
-                  ? (language === 'en' ? '⛅ Partly Cloudy, 23°C' : '⛅ Poco Nuvoloso, 23°C') : 
-                 (language === 'en' ? '☀️ Clear, 21°C' : '☀️ Sereno, 21°C')}
-              </p>
+            <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', color: 'var(--accent-green)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>✅</span>
+              <span>
+                {language === 'en' 
+                  ? "Great outdoor conditions guaranteed for this event date!" 
+                  : "Ottime condizioni all'aperto garantite per la data dell'evento!"}
+              </span>
             </div>
           </div>
         </div>
@@ -316,6 +346,42 @@ END:VCALENDAR`;
             <Bookmark size={16} fill={isSaved ? 'var(--accent-orange)' : 'none'} />
           </button>
         </div>
+
+        {/* Official Ticket Purchasing Link if specified by organizer */}
+        {event.ticketUrl && (
+          <a 
+            href={event.ticketUrl.startsWith('http') ? event.ticketUrl : `https://${event.ticketUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn"
+            style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', textDecoration: 'none', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)' }}
+          >
+            <ExternalLink size={18} />
+            <span>{language === 'en' ? "Buy Official Tickets Online 🎟️" : "Acquista Biglietti Ufficiali Online 🎟️"}</span>
+          </a>
+        )}
+
+        {/* Digital Ticket Pass Button when user is going */}
+        {isGoing && (
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowTicketModal(true)}
+            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: 'var(--gradient-premium)', color: 'white' }}
+          >
+            <Ticket size={18} />
+            <span>{language === 'en' ? "Show Pass / Entrance QR Code 🎟️" : "Mostra Pass / QR Code d'Ingresso 🎟️"}</span>
+          </button>
+        )}
+
+        {/* Share Event & QR Code Button */}
+        <button 
+          className="btn btn-secondary"
+          onClick={() => setShowShareModal(true)}
+          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+        >
+          <Share2 size={18} color="var(--accent-primary)" />
+          <span>{language === 'en' ? "Share Event & QR Code 📲" : "Condividi Evento & QR Code 📲"}</span>
+        </button>
 
         {/* Calendar Export Menu */}
         {isGoing && (
@@ -692,6 +758,118 @@ END:VCALENDAR`;
         </div>
       )}
 
+      {/* Share & QR Code Modal */}
+      {showShareModal && (
+        <div className="modal-overlay animate-fade-in" style={{ zIndex: 400 }}>
+          <div className="modal-content" style={{ padding: '24px', textAlign: 'center', maxWidth: '400px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Share2 size={20} color="var(--accent-primary)" /> {language === 'en' ? "Share Event" : "Condividi Evento"}
+              </h3>
+              <button onClick={() => setShowShareModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* QR Code preview */}
+            <div style={{ background: 'white', padding: '16px', borderRadius: '12px', display: 'inline-block', marginBottom: '16px', boxShadow: 'var(--shadow-sm)' }}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(window.location.origin + window.location.pathname + '#event-' + event.id)}`} 
+                alt="Event QR Code"
+                style={{ width: '160px', height: '160px', display: 'block' }}
+              />
+            </div>
+
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              {language === 'en' ? "Scan the QR code or share the direct link with friends!" : "Inquadra il QR code o invia il link diretto agli amici!"}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* WhatsApp Share Button */}
+              <a 
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Guarda questo evento su EventiApp: "${event.title}" a ${event.location} il ${event.date}! Info e dettagli qui: ${window.location.href}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn"
+                style={{ background: '#25D366', color: 'white', display: 'flex', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
+              >
+                <span>📲 {language === 'en' ? "Share on WhatsApp" : "Condividi su WhatsApp"}</span>
+              </a>
+
+              {/* Copy Link Button */}
+              <button 
+                className="btn btn-secondary"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setCopySuccess(true);
+                  setTimeout(() => setCopySuccess(false), 2000);
+                }}
+                style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}
+              >
+                {copySuccess ? <CheckCircle2 size={16} color="var(--accent-green)" /> : <Copy size={16} />}
+                <span>{copySuccess ? (language === 'en' ? "Link Copied!" : "Link Copiato!") : (language === 'en' ? "Copy Link" : "Copia Link Diretto")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Pass Digital Modal */}
+      {showTicketModal && user && (
+        <div className="modal-overlay animate-fade-in" style={{ zIndex: 400 }}>
+          <div className="modal-content" style={{ padding: '0', maxWidth: '380px', overflow: 'hidden', borderRadius: '18px' }}>
+            {/* Header Ticket Banner */}
+            <div style={{ background: 'var(--gradient-primary)', padding: '20px', color: 'white', textAlign: 'center', position: 'relative' }}>
+              <button onClick={() => setShowTicketModal(false)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} />
+              </button>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', tracking: '0.1em', background: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
+                🎟️ PASS DIGITALE INGRESSO
+              </span>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginTop: '10px', color: 'white' }}>{event.title}</h3>
+              <p style={{ fontSize: '12px', opacity: 0.9, marginTop: '2px' }}>{event.date} • {event.time}</p>
+            </div>
+
+            {/* Ticket Body */}
+            <div style={{ padding: '24px', backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
+              <div style={{ background: 'white', padding: '16px', borderRadius: '16px', display: 'inline-block', boxShadow: 'var(--shadow-md)', border: '2px dashed var(--accent-primary)', marginBottom: '16px' }}>
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`VALID_TICKET:${event.id}:${user.id}:${event.date}`)}`} 
+                  alt="Ticket Entrance QR Code"
+                  style={{ width: '180px', height: '180px', display: 'block' }}
+                />
+              </div>
+
+              <div style={{ borderTop: '1px dashed var(--border-glass)', paddingTop: '14px', marginTop: '4px', textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Titolare Pass:</span>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{user.name} {user.cognome}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Codice Biglietto:</span>
+                  <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
+                    TKT-{event.id.slice(0,4).toUpperCase()}-{user.id.slice(0,4).toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Stato Ingresso:</span>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-green)', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '10px' }}>
+                    VALIDATO ✓
+                  </span>
+                </div>
+              </div>
+
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowTicketModal(false)}
+                style={{ width: '100%', marginTop: '20px' }}
+              >
+                Chiudi Pass
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

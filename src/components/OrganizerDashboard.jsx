@@ -20,6 +20,8 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   const [newLng, setNewLng] = useState('9.1900');
   const [newCategory, setNewCategory] = useState('Feste di paese');
   const [newCost, setNewCost] = useState('Gratuito');
+  const [newMaxCapacity, setNewMaxCapacity] = useState('150');
+  const [newTicketUrl, setNewTicketUrl] = useState('');
   const [newAccessibili, setNewAccessibili] = useState(true);
   const [newAnimali, setNewAnimali] = useState(true);
   const [newParcheggio, setNewParcheggio] = useState(true);
@@ -66,6 +68,8 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       gps: { lat: parseFloat(newLat), lng: parseFloat(newLng) },
       category: newCategory,
       cost: newCost,
+      maxCapacity: parseInt(newMaxCapacity) || 0,
+      ticketUrl: newTicketUrl.trim(),
       accessibili: newAccessibili,
       animali: newAnimali,
       parcheggio: newParcheggio,
@@ -463,6 +467,29 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
                 placeholder="es. Gratuito o €10.00" 
                 value={newCost}
                 onChange={(e) => setNewCost(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">Posti Totali / Capienza</label>
+              <input 
+                type="number" 
+                className="form-input" 
+                placeholder="es. 150 (0 = illimitati)" 
+                value={newMaxCapacity}
+                onChange={(e) => setNewMaxCapacity(e.target.value)}
+              />
+            </div>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">Link Biglietteria Esterna (opzionale)</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="https://www.ticketone.it/..." 
+                value={newTicketUrl}
+                onChange={(e) => setNewTicketUrl(e.target.value)}
               />
             </div>
           </div>

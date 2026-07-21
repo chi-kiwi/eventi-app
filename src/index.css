@@ -1,38 +1,40 @@
 :root {
-  --bg-primary: #f1f5f9; /* Soft light grey/blue */
-  --bg-secondary: #ffffff; /* Crisp white */
-  --bg-tertiary: #f8fafc; /* Extremely light slate */
-  --bg-glass: rgba(255, 255, 255, 0.85); /* Bright glassmorphism */
-  --border-glass: rgba(0, 0, 0, 0.08); /* Soft dark border */
-  --border-glow: rgba(79, 70, 229, 0.15);
+  --bg-primary: #f8fafc; /* Crisp modern slate background */
+  --bg-secondary: #ffffff; /* Pure white surface */
+  --bg-tertiary: #f1f5f9; /* Soft light slate */
+  --bg-glass: rgba(255, 255, 255, 0.92); /* Bright glassmorphism */
+  --border-glass: rgba(99, 102, 241, 0.12); /* Delicate purple-tinted border */
+  --border-glow: rgba(99, 102, 241, 0.25);
   
-  --accent-primary: #4f46e5; /* Indigo */
-  --accent-secondary: #7c3aed; /* Violet */
-  --accent-pink: #ec4899; /* Hot Pink */
-  --accent-green: #10b981; /* Vibrant Green */
-  --accent-orange: #f59e0b; /* Bright Orange */
+  --accent-primary: #6366f1; /* Electric Indigo/Violet */
+  --accent-secondary: #8b5cf6; /* Vibrant Purple */
+  --accent-pink: #f43f5e; /* Vibrant Rose / Neon Pink */
+  --accent-cyan: #06b6d4; /* Electric Cyan */
+  --accent-green: #10b981; /* Emerald Green */
+  --accent-orange: #f59e0b; /* Warm Amber Orange */
   
   --text-primary: #0f172a; /* Slate 900 */
   --text-secondary: #334155; /* Slate 700 */
   --text-muted: #64748b; /* Slate 500 */
   
-  --gradient-primary: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
-  --gradient-dark: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-  --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
-  --gradient-premium: linear-gradient(90deg, #3b82f6 0%, #7c3aed 100%);
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #f43f5e 100%);
+  --gradient-header: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311b92 100%);
+  --gradient-dark: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  --gradient-card: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  --gradient-premium: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #f43f5e 100%);
   
-  --shadow-sm: 0 4px 10px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.08);
-  --shadow-glow: 0 10px 25px rgba(79, 70, 229, 0.12);
-  --shadow-glow-pink: 0 10px 25px rgba(236, 72, 153, 0.15);
-  --shadow-glow-green: 0 10px 25px rgba(16, 185, 129, 0.15);
+  --shadow-sm: 0 4px 14px rgba(99, 102, 241, 0.06);
+  --shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 10px 30px rgba(99, 102, 241, 0.22);
+  --shadow-glow-pink: 0 10px 30px rgba(244, 63, 94, 0.22);
+  --shadow-glow-green: 0 10px 30px rgba(16, 185, 129, 0.22);
   
   --font-display: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
   
-  --border-radius-sm: 8px;
-  --border-radius-md: 14px;
-  --border-radius-lg: 24px;
+  --border-radius-sm: 10px;
+  --border-radius-md: 18px;
+  --border-radius-lg: 28px;
   
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -71,23 +73,48 @@ body {
 
 /* App Viewport Container */
 .app-container {
-  max-width: 480px;
+  width: 100%;
+  max-width: 1280px;
   min-height: 100vh;
   margin: 0 auto;
   background-color: var(--bg-secondary);
   background-image: var(--gradient-dark);
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.06);
-  border-left: 1px solid var(--border-glass);
-  border-right: 1px solid var(--border-glass);
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   position: relative;
-  padding-bottom: 74px;
+  padding-bottom: 80px;
+  border-left: 1px solid var(--border-glass);
+  border-right: 1px solid var(--border-glass);
 }
 
-@media (min-width: 768px) {
-  .app-container {
-    max-width: 600px;
+/* Responsive Grid for Events on Desktop/Tablet */
+.events-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .events-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .events-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  
+  .app-header {
+    padding: 16px 32px;
+  }
+  
+  .view-content {
+    padding: 24px 32px;
   }
 }
 
@@ -217,24 +244,26 @@ h1, h2, h3, h4, .font-display {
   position: sticky;
   top: 0;
   z-index: 100;
-  padding: 16px 20px;
+  padding: 14px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-glass);
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--gradient-header);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
 }
 .app-title {
   font-size: 22px;
   font-weight: 800;
-  background: var(--gradient-primary);
+  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #f472b6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: -0.03em;
 }
 
 /* Bottom Navigation Bar */
@@ -244,20 +273,35 @@ h1, h2, h3, h4, .font-display {
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 480px;
+  max-width: 1280px;
   background: var(--bg-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-glass);
   display: flex;
   justify-content: space-around;
-  padding: 8px 0;
+  padding: 10px 16px;
   z-index: 100;
   box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.04);
 }
 @media (min-width: 768px) {
-  .bottom-nav {
-    max-width: 600px;
+  .nav-item {
+    flex-direction: row;
+    gap: 8px;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: var(--border-radius-sm);
+  }
+  .nav-item.active {
+    background-color: rgba(79, 70, 229, 0.08);
+  }
+  .nav-item.active::after {
+    display: none;
+  }
+  .nav-icon {
+    width: 20px;
+    height: 20px;
+    margin-bottom: 0;
   }
 }
 .nav-item {
