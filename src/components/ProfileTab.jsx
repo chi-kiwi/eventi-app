@@ -55,35 +55,40 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       name: language === 'en' ? "Bronze League 🥉" : "Lega Bronzo 🥉", 
       min: 0, 
       max: 99, 
-      perk: language === 'en' ? "Just started! Encouraging initial applause." : "Hai appena iniziato! Primi applausi incoraggianti.",
+      badge: "🥉",
+      status: language === 'en' ? "Community Novice" : "Novizio della Community",
       gif: "https://media.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif"
     },
     { 
       name: language === 'en' ? "Silver League 🥈" : "Lega Argento 🥈", 
       min: 100, 
       max: 249, 
-      perk: language === 'en' ? "Growing strong! Clapping from The Office." : "Stai crescendo! Applausi convinti da The Office.",
+      badge: "🥈",
+      status: language === 'en' ? "Active Explorer" : "Esploratore Attivo",
       gif: "https://media.giphy.com/media/2xO491sY6UtmaDQAyc/giphy.gif"
     },
     { 
       name: language === 'en' ? "Gold League 🥇" : "Lega Oro 🥇", 
       min: 250, 
       max: 499, 
-      perk: language === 'en' ? "Excellent level! Respectful presidential applause." : "Livello eccellente! Applausi presidenziali di rispetto.",
+      badge: "🥇",
+      status: language === 'en' ? "Expert Participant" : "Partecipante Esperto",
       gif: "https://media.giphy.com/media/l3q2XHFQOP6WoWmHm/giphy.gif"
     },
     { 
       name: language === 'en' ? "Platinum League 💎" : "Lega Platino 💎", 
       min: 500, 
       max: 999, 
-      perk: language === 'en' ? "You are a VIP! A classy toast from The Great Gatsby." : "Sei un VIP! Un brindisi di classe dal Grande Gatsby.",
+      badge: "💎",
+      status: language === 'en' ? "Community Leader" : "Leader della Community",
       gif: "https://media.giphy.com/media/g9582DNuQppazjLH33/giphy.gif"
     },
     { 
       name: language === 'en' ? "Diamond League 🏆" : "Lega Diamante 🏆", 
       min: 1000, 
       max: Infinity, 
-      perk: language === 'en' ? "Undisputed King! Total celebration in Bikini Bottom." : "Il Re indiscusso! Festa totale nel Bikini Bottom.",
+      badge: "🏆",
+      status: language === 'en' ? "Event Legend" : "Leggenda degli Eventi",
       gif: "https://media.giphy.com/media/oF5oQHhA23vdm/giphy.gif"
     }
   ];
@@ -493,8 +498,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                           <span style={{ fontSize: '10px', backgroundColor: 'var(--accent-primary)', color: 'white', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>{language === 'en' ? "You" : "Tu"}</span>
                         )}
                       </div>
-                      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: '1.4', marginBottom: '8px' }}>
-                        {league.perk}
+                      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: '1.4', marginBottom: '6px', fontWeight: '500' }}>
+                        Rango: {league.status}
                       </p>
                       <img 
                         src={league.gif} 

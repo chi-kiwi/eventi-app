@@ -1,40 +1,41 @@
 :root {
   --bg-primary: #f8fafc; /* Crisp modern slate background */
-  --bg-secondary: #ffffff; /* Pure white surface */
-  --bg-tertiary: #f1f5f9; /* Soft light slate */
-  --bg-glass: rgba(255, 255, 255, 0.92); /* Bright glassmorphism */
-  --border-glass: rgba(99, 102, 241, 0.12); /* Delicate purple-tinted border */
-  --border-glow: rgba(99, 102, 241, 0.25);
+  --bg-secondary: #ffffff; /* Pure white card surface */
+  --bg-tertiary: #f1f5f9; /* Soft light slate element background */
+  --bg-glass: rgba(255, 255, 255, 0.95); /* Crisp frosted glass */
+  --border-glass: rgba(0, 0, 0, 0.08); /* Clean subtle border */
+  --border-glow: rgba(255, 56, 92, 0.25);
   
-  --accent-primary: #6366f1; /* Electric Indigo/Violet */
-  --accent-secondary: #8b5cf6; /* Vibrant Purple */
-  --accent-pink: #f43f5e; /* Vibrant Rose / Neon Pink */
-  --accent-cyan: #06b6d4; /* Electric Cyan */
+  --accent-primary: #ff385c; /* Warm Coral Rose (Primary brand color) */
+  --accent-secondary: #e11d48; /* Deep Rose Red */
+  --accent-pink: #f43f5e; /* Vibrant Rose */
+  --accent-indigo: #4f46e5; /* Deep Indigo for contrasts */
+  --accent-cyan: #0284c7; /* Sky Blue */
   --accent-green: #10b981; /* Emerald Green */
-  --accent-orange: #f59e0b; /* Warm Amber Orange */
+  --accent-orange: #f97316; /* Vibrant Sunset Orange */
   
   --text-primary: #0f172a; /* Slate 900 */
   --text-secondary: #334155; /* Slate 700 */
   --text-muted: #64748b; /* Slate 500 */
   
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #f43f5e 100%);
-  --gradient-header: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311b92 100%);
+  --gradient-primary: linear-gradient(135deg, #ff385c 0%, #e11d48 50%, #f97316 100%);
+  --gradient-header: rgba(255, 255, 255, 0.95);
   --gradient-dark: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  --gradient-card: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  --gradient-premium: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #f43f5e 100%);
+  --gradient-card: #ffffff;
+  --gradient-premium: linear-gradient(135deg, #ff385c 0%, #8b5cf6 50%, #3b82f6 100%);
   
-  --shadow-sm: 0 4px 14px rgba(99, 102, 241, 0.06);
-  --shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
-  --shadow-glow: 0 10px 30px rgba(99, 102, 241, 0.22);
-  --shadow-glow-pink: 0 10px 30px rgba(244, 63, 94, 0.22);
-  --shadow-glow-green: 0 10px 30px rgba(16, 185, 129, 0.22);
+  --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.06);
+  --shadow-glow: 0 10px 25px rgba(255, 56, 92, 0.25);
+  --shadow-glow-pink: 0 10px 25px rgba(244, 63, 94, 0.22);
+  --shadow-glow-green: 0 10px 25px rgba(16, 185, 129, 0.22);
   
   --font-display: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
   
   --border-radius-sm: 10px;
-  --border-radius-md: 18px;
-  --border-radius-lg: 28px;
+  --border-radius-md: 16px;
+  --border-radius-lg: 26px;
   
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -248,16 +249,16 @@ h1, h2, h3, h4, .font-display {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: var(--gradient-header);
+  border-bottom: 1px solid var(--border-glass);
+  background: var(--bg-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
 }
 .app-title {
   font-size: 22px;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #f472b6 100%);
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: flex;
