@@ -1,0 +1,697 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, MapPin, Heart, Check, Bookmark, ArrowLeft, Shield, Map, ExternalLink, CalendarPlus, MessageSquare, Info, ShieldAlert, Plus, ChevronLeft, ChevronRight, X, Image as ImageIcon, User } from 'lucide-react';
+import { db } from '../services/db';
+import { useLanguage } from '../services/i18n.jsx';
+
+const PHOTO_PRESETS = [
+  { name: "🍔 Street Food", url: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800" },
+  { name: "🎸 Concerto Rock", url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800" },
+  { name: "🍲 Sagra Tradizionale", url: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800" },
+  { name: "🏞️ Escursione Natura", url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800" }
+];
+
+export default function EventDetails({ event, user, onBack, onToggleParticipation, onStartChat, onProfileUpdated }) {
+  const { language, t } = useLanguage();
+  const [showDirectionsMenu, setShowDirectionsMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploadUrl, setUploadUrl] = useState('');
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+
+  // Social board & photo likes states
+  const [communityMessages, setCommunityMessages] = useState([]);
+  const [newMessageText, setNewMessageText] = useState('');
+  const [galleryUpdateCounter, setGalleryUpdateCounter] = useState(0);
+
+  useEffect(() => {
+    setCommunityMessages(db.getCommunityMessages(event.id));
+  }, [event.id]);
+
+  const users = db.getUsers();
+  const organizer = users.find(u => u.id === event.organizerId);
+  const isOrganizerPremium = organizer?.premium;
+
+  const isInterested = user && event.interestedUsers?.includes(user.id);
+  const isGoing = user && event.goingUsers?.includes(user.id);
+  const isSaved = user && event.savedUsers?.includes(user.id);
+
+  // Generate calendar export links
+  const getGoogleCalendarUrl = () => {
+    const title = encodeURIComponent(event.title);
+    const details = encodeURIComponent(event.desc);
+    const location = encodeURIComponent(event.location);
+    
+    const dateFormatted = event.date.replace(/-/g, '');
+    const startTime = event.time.replace(/:/g, '') + '00';
+    const endTime = (parseInt(event.time.split(':')[0]) + 2) + event.time.split(':')[1] + '00';
+    const dates = `${dateFormatted}T${startTime}/${dateFormatted}T${endTime}`;
+    
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&location=${location}`;
+  };
+
+  const downloadIcsFile = () => {
+    const title = event.title;
+    const desc = event.desc.replace(/\n/g, '\\n');
+    const location = event.location;
+    const dateFormatted = event.date.replace(/-/g, '');
+    const startTime = event.time.replace(/:/g, '') + '00';
+    
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:${title}
+DESCRIPTION:${desc}
+LOCATION:${location}
+DTSTART:${dateFormatted}T${startTime}
+DTEND:${dateFormatted}T${(parseInt(event.time.split(':')[0]) + 2) + event.time.split(':')[1]}00
+END:VEVENT
+END:VCALENDAR`;
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', `${event.title.replace(/\s+/g, '_')}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Open maps coordinates
+  const openDirections = (app) => {
+    const { lat, lng } = event.gps;
+    let url = '';
+    if (app === 'google') {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    } else if (app === 'apple') {
+      url = `maps://maps.apple.com/?daddr=${lat},${lng}`;
+    } else if (app === 'waze') {
+      url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+    }
+    window.open(url, '_blank');
+    setShowDirectionsMenu(false);
+  };
+
+  const handleAddPhotoSubmit = (e, presetUrl = null) => {
+    if (e) e.preventDefault();
+    setUploadError('');
+    setUploadSuccess('');
+
+    const url = presetUrl || uploadUrl.trim();
+    if (!url) {
+      setUploadError("Fornisci un URL immagine valido.");
+      return;
+    }
+
+    const uploaderId = user ? user.id : 'org_1';
+    const uploaderName = user ? `${user.name} ${user.cognome}` : 'Organizzatore';
+
+    const res = db.addPhotoToEvent(event.id, url, uploaderId, uploaderName);
+    if (res.success) {
+      setUploadSuccess("Foto aggiunta con successo!");
+      setUploadUrl('');
+      
+      // Update local event references
+      event.gallery = res.event.gallery;
+      setGalleryUpdateCounter(prev => prev + 1);
+      
+      setTimeout(() => {
+        setUploadSuccess('');
+        setShowUploadForm(false);
+      }, 1000);
+    } else {
+      setUploadError("Errore durante l'aggiunta della foto.");
+    }
+  };
+
+  const handleToggleLike = (e, photoId) => {
+    e.stopPropagation(); // prevent lightbox slider
+    if (!user) return;
+
+    const res = db.togglePhotoLike(event.id, photoId, user.id);
+    if (res.success) {
+      event.gallery = res.event.gallery;
+      setGalleryUpdateCounter(prev => prev + 1);
+
+      // If XP was awarded to uploader and it's not the user liking their own photo, write alert in uploader's notifications
+      if (res.xpAwarded > 0 && res.uploaderId && res.uploaderId !== user.id) {
+        const uploaderNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${res.uploaderId}`) || "[]");
+        uploaderNotifs.unshift({
+          id: `notif_like_${Date.now()}`,
+          title: "Il tuo scatto piace a qualcuno! ❤️",
+          text: `${user.name} ha messo like alla tua foto. Hai guadagnato +5 XP!`,
+          timestamp: new Date().toISOString(),
+          type: "system",
+          read: false
+        });
+        localStorage.setItem(`evt_notifications_${res.uploaderId}`, JSON.stringify(uploaderNotifs));
+      }
+    }
+  };
+
+  const handlePostCommunityMessage = (e) => {
+    e.preventDefault();
+    if (!newMessageText.trim() || !user) return;
+
+    const res = db.addCommunityMessage(
+      event.id,
+      user.id,
+      `${user.name} ${user.cognome}`,
+      user.avatar || '',
+      newMessageText.trim()
+    );
+
+    if (res.success) {
+      setCommunityMessages(db.getCommunityMessages(event.id));
+      setNewMessageText('');
+
+      // Trigger user points sync in App.jsx
+      const updatedUser = { ...user, points: res.userPoints };
+      if (onProfileUpdated) {
+        onProfileUpdated(updatedUser);
+        localStorage.setItem("evt_current_user", JSON.stringify(updatedUser));
+      }
+
+      // Add a local notification for contributing to the community board
+      const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${user.id}`) || "[]");
+      myNotifs.unshift({
+        id: `notif_contrib_${Date.now()}`,
+        title: "Contributo Community! 👥",
+        text: `Grazie per aver partecipato alla bacheca. Hai ottenuto +2 XP!`,
+        timestamp: new Date().toISOString(),
+        type: "system",
+        read: false
+      });
+      localStorage.setItem(`evt_notifications_${user.id}`, JSON.stringify(myNotifs));
+    }
+  };
+
+  const getCategoryLabel = (c) => {
+    if (c === "Feste di paese") return language === 'en' ? "Country Festivals" : "Feste di paese";
+    if (c === "Feste nei locali") return language === 'en' ? "Club Events" : "Feste nei locali";
+    if (c === "Musica") return language === 'en' ? "Music" : "Musica";
+    if (c === "Motori") return language === 'en' ? "Motors" : "Motori";
+    if (c === "Escursioni") return language === 'en' ? "Hiking" : "Escursioni";
+    if (c === "Sport") return language === 'en' ? "Sports" : "Sport";
+    if (c === "Mercatini") return language === 'en' ? "Markets" : "Mercatini";
+    if (c === "Street food") return "Street Food";
+    if (c === "Bambini/Famiglie") return language === 'en' ? "Kids/Family" : "Bambini/Famiglie";
+    return c;
+  };
+
+  return (
+    <div className="view-content animate-slide-in" style={{ padding: '0 0 40px' }}>
+      
+      {/* Header Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', background: 'var(--bg-glass)', borderBottom: '1px solid var(--border-glass)', sticky: 'top', zIndex: 10 }}>
+        <button 
+          onClick={onBack}
+          style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+        >
+          <ArrowLeft size={24} />
+        </button>
+        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{language === 'en' ? "Event Details" : "Dettaglio Evento"}</span>
+      </div>
+
+      {/* Main Poster */}
+      {event.poster && (
+        <div style={{ width: '100%', height: '240px', position: 'relative' }}>
+          <img 
+            src={event.poster} 
+            alt={event.title} 
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+            onError={(e) => { e.target.onerror = null; e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' style='background:linear-gradient(135deg, %234f46e5 0%, %23ec4899 100%)'><text x='50%' y='50%' fill='white' font-size='24' font-family='sans-serif' text-anchor='middle' dy='.3em'>Eventi App 🎟️</text></svg>"; }}
+          />
+          <div style={{ position: 'absolute', bottom: '16px', left: '20px', display: 'flex', gap: '8px' }}>
+            <span className="badge-pill badge-category">{getCategoryLabel(event.category)}</span>
+            <span className="badge-pill" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white' }}>
+              {event.cost === 'Gratuito' && language === 'en' ? 'Free' : event.cost}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        
+        {/* Title & Stats */}
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: '1.2' }}>{event.title}</h1>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+              {language === 'en' ? 'Organized by:' : 'Organizzato da:'} <strong>{organizer ? `${organizer.name} ${organizer.cognome}` : (language === 'en' ? 'Organizer' : 'Organizzatore')}</strong>
+              {isOrganizerPremium && <span className="verified-badge" title={language === 'en' ? "Certified Organizer" : "Organizzatore Certificato"}>✓</span>}
+            </p>
+          </div>
+        </div>
+
+        {/* Date, Time, Location details */}
+        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '8px', borderRadius: '8px', color: 'var(--accent-primary)' }}>
+              <Calendar size={20} />
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{language === 'en' ? "Date and Time" : "Data e Ora"}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{event.date} {language === 'en' ? 'at' : 'alle'} {event.time}</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ background: 'rgba(244, 63, 94, 0.15)', padding: '8px', borderRadius: '8px', color: 'var(--accent-pink)' }}>
+              <MapPin size={20} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{language === 'en' ? "Location" : "Luogo"}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{event.location}</p>
+            </div>
+          </div>
+
+          {/* Weather Widget */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderTop: '1px solid var(--border-glass)', paddingTop: '12px' }}>
+            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '8px', borderRadius: '8px', color: 'var(--accent-orange)', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px' }}>
+              {event.category === 'Escursioni' || event.category === 'Feste di paese' ? '☀️' : '⛅'}
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{t('weather_forecast')}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                {event.category === 'Escursioni' 
+                  ? (language === 'en' ? '☀️ Sunny, 22°C (Ideal for hiking)' : '☀️ Soleggiato, 22°C (Ideale per camminate)') : 
+                 event.category === 'Feste di paese' 
+                  ? (language === 'en' ? '☀️ Clear, 24°C (Outdoor area active!)' : '☀️ Sereno, 24°C (Area all\'aperto attiva!)') : 
+                 event.category === 'Street food' 
+                  ? (language === 'en' ? '⛅ Partly Cloudy, 23°C' : '⛅ Poco Nuvoloso, 23°C') : 
+                 (language === 'en' ? '☀️ Clear, 21°C' : '☀️ Sereno, 21°C')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Participation Bar */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            className="btn btn-secondary"
+            style={{ flex: 1, backgroundColor: isInterested ? 'rgba(244,63,94,0.1)' : 'var(--bg-tertiary)', borderColor: isInterested ? 'var(--accent-pink)' : 'var(--border-glass)', color: isInterested ? 'var(--accent-pink)' : 'var(--text-primary)' }}
+            onClick={() => onToggleParticipation(event.id, 'interested')}
+          >
+            <Heart size={16} fill={isInterested ? 'var(--accent-pink)' : 'none'} />
+            <span>{isInterested ? (language === 'en' ? 'Interested' : 'Mi interessa') : (language === 'en' ? 'Interested' : 'Mi interessa')}</span>
+          </button>
+
+          <button 
+            className="btn"
+            style={{ flex: 1.2, backgroundColor: isGoing ? 'var(--accent-green)' : 'var(--accent-primary)', color: 'white', boxShadow: isGoing ? 'var(--shadow-glow-green)' : 'none' }}
+            onClick={() => onToggleParticipation(event.id, 'going')}
+          >
+            <Check size={16} />
+            <span>{isGoing ? (language === 'en' ? 'Going ✓' : 'Ci sarò ✓') : (language === 'en' ? 'Join Event' : 'Partecipò')}</span>
+          </button>
+
+          <button 
+            className="btn btn-secondary"
+            style={{ flex: 0.5, backgroundColor: isSaved ? 'rgba(245,158,11,0.1)' : 'var(--bg-tertiary)', borderColor: isSaved ? 'var(--accent-orange)' : 'var(--border-glass)', color: isSaved ? 'var(--accent-orange)' : 'var(--text-primary)' }}
+            onClick={() => onToggleParticipation(event.id, 'saved')}
+          >
+            <Bookmark size={16} fill={isSaved ? 'var(--accent-orange)' : 'none'} />
+          </button>
+        </div>
+
+        {/* Calendar Export Menu */}
+        {isGoing && (
+          <div style={{ position: 'relative' }}>
+            <button 
+              className="btn btn-secondary btn-small"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              style={{ borderColor: 'var(--accent-green)', color: 'var(--accent-green)', display: 'flex', justifyContent: 'center', gap: '8px' }}
+            >
+              <CalendarPlus size={16} />
+              <span>{language === 'en' ? "Add to Calendar" : "Aggiungi al tuo Calendario"}</span>
+            </button>
+            
+            {showExportMenu && (
+              <div className="glass-panel" style={{ position: 'absolute', top: '105%', left: 0, right: 0, zIndex: 20, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <a href={getGoogleCalendarUrl()} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-small" style={{ textDecoration: 'none', justifyContent: 'flex-start' }}>
+                  📅 {language === 'en' ? "Export to Google Calendar" : "Esporta su Google Calendar"}
+                </a>
+                <button className="btn btn-secondary btn-small" onClick={downloadIcsFile} style={{ justifyContent: 'flex-start' }}>
+                  🍎 {language === 'en' ? "Export to Apple Calendar (.ics)" : "Esporta su Apple Calendar (.ics)"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quick Map Directions Menu */}
+        <div style={{ position: 'relative' }}>
+          <button 
+            className="btn btn-secondary"
+            onClick={() => setShowDirectionsMenu(!showDirectionsMenu)}
+            style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}
+          >
+            <Map size={18} />
+            <span>{language === 'en' ? "Get Directions" : "Portami Qui"}</span>
+          </button>
+          
+          {showDirectionsMenu && (
+            <div className="glass-panel" style={{ position: 'absolute', top: '105%', left: 0, right: 0, zIndex: 20, padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <button className="btn btn-secondary btn-small" onClick={() => openDirections('google')} style={{ justifyContent: 'flex-start' }}>
+                🚗 Google Maps
+              </button>
+              <button className="btn btn-secondary btn-small" onClick={() => openDirections('apple')} style={{ justifyContent: 'flex-start' }}>
+                📱 Apple Maps
+              </button>
+              <button className="btn btn-secondary btn-small" onClick={() => openDirections('waze')} style={{ justifyContent: 'flex-start' }}>
+                🚙 Waze
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Description */}
+        <div>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            {language === 'en' ? "Description" : "Descrizione"}
+          </h3>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{event.desc}</p>
+        </div>
+
+        {/* Utilities Tags */}
+        <div className="glass-panel" style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', opacity: event.accessibili ? 1 : 0.4 }}>
+            <span style={{ fontSize: '20px' }}>♿</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '500' }}>
+              {language === 'en' ? "Accessibility" : "Disabili"}
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+              {event.accessibili ? (language === 'en' ? 'Accessible' : 'Accessibile') : 'No'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', opacity: event.animali ? 1 : 0.4 }}>
+            <span style={{ fontSize: '20px' }}>🐕</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '500' }}>
+              {language === 'en' ? "Pets" : "Animali"}
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+              {event.animali ? (language === 'en' ? 'Allowed' : 'Ammessi') : 'No'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', opacity: event.parcheggio ? 1 : 0.4 }}>
+            <span style={{ fontSize: '20px' }}>🅿️</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '500' }}>
+              {language === 'en' ? "Parking" : "Parcheggio"}
+            </span>
+            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+              {event.parcheggio ? (language === 'en' ? 'Available' : 'Disponibile') : 'No'}
+            </span>
+          </div>
+        </div>
+
+        {/* Photo Gallery */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ImageIcon size={18} color="var(--accent-primary)" /> {language === 'en' ? "Photo Gallery" : "Galleria Foto"} ({event.gallery?.length || 0})
+            </h3>
+            <button 
+              className="btn btn-secondary btn-small"
+              onClick={() => setShowUploadForm(!showUploadForm)}
+              style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px' }}
+            >
+              <Plus size={14} /> {language === 'en' ? "Add Photo" : "Aggiungi Foto"}
+            </button>
+          </div>
+
+          {showUploadForm && (
+            <div className="glass-panel animate-slide-in" style={{ padding: '16px', marginBottom: '12px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
+                {language === 'en' ? "Upload a Photo" : "Carica una Foto"}
+              </h4>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  {language === 'en' ? "Use a quick test photo:" : "Usa una foto di test rapida:"}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                  {PHOTO_PRESETS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="tag-pill"
+                      style={{ fontSize: '11px', padding: '4px 8px' }}
+                      onClick={() => handleAddPhotoSubmit(null, preset.url)}
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+
+                <form onSubmit={handleAddPhotoSubmit}>
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={language === 'en' ? "Paste an image URL..." : "Incolla l'URL di un'immagine..."}
+                      value={uploadUrl}
+                      onChange={(e) => setUploadUrl(e.target.value)}
+                    />
+                  </div>
+                  {uploadError && <p style={{ color: 'var(--accent-pink)', fontSize: '12px', marginBottom: '8px' }}>{uploadError}</p>}
+                  {uploadSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '12px', marginBottom: '8px' }}>{uploadSuccess}</p>}
+                  
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button type="button" className="btn btn-secondary btn-small" onClick={() => setShowUploadForm(false)} style={{ flex: 1 }}>
+                      Annulla
+                    </button>
+                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                      Invia
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {event.gallery && event.gallery.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              {event.gallery.map((img, idx) => {
+                const isObject = typeof img === 'object' && img !== null;
+                const imgUrl = isObject ? img.url : img;
+                const photoId = isObject ? img.id : `legacy_${idx}`;
+                const likesCount = isObject ? (img.likes?.length || 0) : 0;
+                const hasLiked = isObject && img.likes?.includes(user?.id);
+
+                return (
+                  <div 
+                    key={photoId} 
+                    onClick={() => setLightboxIndex(idx)}
+                    style={{ 
+                      position: 'relative',
+                      width: '100%', 
+                      aspectRatio: '4/3', 
+                      borderRadius: '8px', 
+                      overflow: 'hidden', 
+                      cursor: 'pointer', 
+                      border: '1px solid var(--border-glass)', 
+                      boxShadow: 'var(--shadow-sm)', 
+                      transition: 'transform 0.2s' 
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+                  >
+                    <img 
+                      src={imgUrl} 
+                      alt={`Galleria ${idx + 1}`} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                    
+                    {/* Likes Overlay on photo */}
+                    {isObject && (
+                      <div 
+                        onClick={(e) => handleToggleLike(e, photoId)}
+                        style={{
+                          position: 'absolute',
+                          bottom: '6px',
+                          right: '6px',
+                          background: 'rgba(0,0,0,0.65)',
+                          backdropFilter: 'blur(4px)',
+                          color: hasLiked ? 'var(--accent-pink)' : 'white',
+                          borderRadius: '12px',
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          cursor: 'pointer',
+                          border: '1px solid rgba(255,255,255,0.1)'
+                        }}
+                      >
+                        <span style={{ fontSize: '11px' }}>{hasLiked ? '❤️' : '🤍'}</span>
+                        <span>{likesCount}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>
+              {language === 'en' ? "No photos uploaded for this event. Be the first to upload one!" : "Nessuna foto caricata per questo evento. Sii il primo a caricarne una!"}
+            </p>
+          )}
+        </div>
+
+        {/* Contact Organizer Chat */}
+        {user && user.id !== event.organizerId && (
+          <button 
+            className="btn btn-secondary"
+            onClick={() => onStartChat(event.id, event.organizerId)}
+            style={{ display: 'flex', justifyContent: 'center', gap: '8px', borderStyle: 'dashed' }}
+          >
+            <MessageSquare size={18} color="var(--accent-primary)" />
+            <span>{language === 'en' ? "Ask the organizers in private" : "Chiedi in privato agli organizzatori"}</span>
+          </button>
+        )}
+
+        {/* Bacheca della Community */}
+        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {t('community_board')}
+          </h3>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+            {t('community_sub')}
+          </p>
+
+          {/* Messages list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border-glass)', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.01)' }}>
+            {communityMessages.length > 0 ? (
+              communityMessages.map((msg) => (
+                <div key={msg.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  {msg.userAvatar ? (
+                    <img 
+                      src={msg.userAvatar} 
+                      alt={msg.userName} 
+                      style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
+                    />
+                  ) : (
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <User size={16} color="var(--text-secondary)" />
+                    </div>
+                  )}
+                  
+                  <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{msg.userName}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{msg.text}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
+                {language === 'en' ? "No messages posted. Write the first post!" : "Nessun messaggio pubblicato. Scrivi il primo post!"}
+              </p>
+            )}
+          </div>
+
+          {/* Form to submit community message */}
+          {user ? (
+            <form onSubmit={handlePostCommunityMessage} style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder={t('send_msg_placeholder')} 
+                value={newMessageText}
+                onChange={(e) => setNewMessageText(e.target.value)}
+                style={{ fontSize: '13px', height: '38px' }}
+              />
+              <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '0 16px', fontSize: '13px' }}>
+                {t('send')}
+              </button>
+            </form>
+          ) : (
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              {language === 'en' ? "Log in to post on the community board." : "Accedi per poter scrivere sulla bacheca."}
+            </p>
+          )}
+        </div>
+
+        {/* Updates published by Organizers/Collaborators */}
+        <div>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🔔 {language === 'en' ? "Announcements & Updates" : "Avvisi & Aggiornamenti"} ({event.updates?.length || 0})
+          </h3>
+          {event.updates && event.updates.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {event.updates.map(up => (
+                <div key={up.id} className="glass-card" style={{ padding: '12px', borderLeft: '4px solid var(--accent-primary)', backgroundColor: 'rgba(99, 102, 241, 0.05)' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{up.text}</p>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
+                    {language === 'en' 
+                      ? `Posted on ${new Date(up.date).toLocaleDateString()} at ${new Date(up.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                      : `Pubblicato il ${new Date(up.date).toLocaleDateString()} alle ${new Date(up.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{t('no_updates')}</p>
+          )}
+        </div>
+
+      </div>
+
+      {/* Lightbox Overlay */}
+      {lightboxIndex !== null && (
+        <div className="modal-overlay animate-fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 300 }}>
+          <button 
+            onClick={() => setLightboxIndex(null)}
+            style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', zIndex: 310 }}
+          >
+            <X size={24} />
+          </button>
+          
+          <button 
+            onClick={() => setLightboxIndex((prev) => (prev > 0 ? prev - 1 : event.gallery.length - 1))}
+            style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', zIndex: 310 }}
+          >
+            <ChevronLeft size={24} />
+          </button>
+
+          <img 
+            src={typeof event.gallery[lightboxIndex] === 'object' && event.gallery[lightboxIndex] !== null ? event.gallery[lightboxIndex].url : event.gallery[lightboxIndex]} 
+            alt={`Galleria ${lightboxIndex + 1}`} 
+            style={{ maxWidth: '90%', maxHeight: '80%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }} 
+          />
+
+          <button 
+            onClick={() => setLightboxIndex((prev) => (prev < event.gallery.length - 1 ? prev + 1 : 0))}
+            style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', zIndex: 310 }}
+          >
+            <ChevronRight size={24} />
+          </button>
+
+          <div style={{ position: 'absolute', bottom: '20px', color: 'white', fontSize: '14px', fontWeight: '500', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', textAlign: 'center' }}>
+            <span>
+              {language === 'en' 
+                ? `Photo ${lightboxIndex + 1} of ${event.gallery.length}` 
+                : `Foto ${lightboxIndex + 1} di ${event.gallery.length}`}
+            </span>
+            {typeof event.gallery[lightboxIndex] === 'object' && event.gallery[lightboxIndex] !== null && (
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                {language === 'en' ? 'Uploaded by:' : 'Caricata da:'} <strong>{event.gallery[lightboxIndex].uploaderName}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
