@@ -33,7 +33,7 @@ export default function LegalModal({ isOpen, onClose }) {
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass)', padding: '12px', borderRadius: '8px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
             <Info size={16} style={{ color: 'var(--accent-primary)', flexShrink: 0, marginTop: '2px' }} />
             <p style={{ fontSize: '12px', color: 'var(--text-primary)' }}>
-              <strong>Informativa Prototipo:</strong> Questa applicazione è una SPA dimostrativa (Prototipo Premium). I dati inseriti sono ospitati unicamente in locale.
+              <strong>Informativa Archiviazione:</strong> Questa applicazione è configurata in modalità local-first. I dati inseriti rimangono confinati in sicurezza all'interno del dispositivo per garantire la privacy.
             </p>
           </div>
 
@@ -43,17 +43,17 @@ export default function LegalModal({ isOpen, onClose }) {
             </h4>
             <p>
               Ai sensi del Regolamento UE 2016/679 (GDPR), ti informiamo che il Titolare del Trattamento dei dati è <strong>EventiApp S.r.l.</strong>. 
-              I dati forniti in fase di registrazione (nome, email, telefono, comune e regione) vengono utilizzati esclusivamente per consentire il corretto funzionamento delle funzionalità social, di gamification e di filtro geografico della community. I dati non vengono ceduti, venduti o comunicati a soggetti terzi per scopi commerciali.
+              I dati forniti in fase di registrazione (nome, email, telefono, comune e regione) vengono utilizzati esclusivamente per consentire il corretto funzionamento delle funzionalità social e di filtro geografico della community. I dati non vengono ceduti, venduti o comunicati a soggetti terzi per scopi commerciali.
             </p>
           </div>
 
           <div>
             <h4 style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <FileText size={14} /> 2. Transazioni e Sicurezza Pagamenti
+              <FileText size={14} /> 2. Servizi Commerciali e Spunta Blu
             </h4>
             <p>
-              I servizi commerciali simulati (es. passaggio a account Organizzatore certificato "Spunta Blu") e qualsiasi transazione finanziaria mostrata nel portale sono a scopo puramente illustrativo. 
-              <strong>Nessun addebito di denaro reale</strong> viene effettuato e non viene memorizzata alcuna informazione sensibile di carte di credito, PayPal o conti bancari.
+              I servizi a valore aggiunto (es. passaggio a account Organizzatore certificato "Spunta Blu") e le relative attivazioni mostrate nel portale sono gestite localmente tramite il credito dell'account. 
+              <strong>Nessun addebito di valuta reale</strong> viene effettuato e non viene memorizzata alcuna informazione sensibile di carte di credito, PayPal o conti bancari.
             </p>
           </div>
 

@@ -55,176 +55,7 @@ const DEFAULT_USERS = [
   }
 ];
 
-const DEFAULT_EVENTS = [
-  {
-    id: "evt_1",
-    title: "Gran Festival dello Street Food",
-    desc: "Il meglio del cibo da strada nazionale e internazionale nel cuore di Saronno. Oltre 30 food truck, birre artigianali e musica live tutte le sere. Ingresso gratuito!",
-    date: new Date().toISOString().split('T')[0], // Today
-    time: "18:00",
-    location: "Saronno, Piazza Libertà",
-    gps: { lat: 45.6264, lng: 9.0347 },
-    category: "Street food",
-    cost: "Gratuito",
-    accessibili: true,
-    animali: true,
-    parcheggio: true,
-    maps_link: "https://maps.google.com/?q=45.6264,9.0347",
-    poster: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=600",
-    gallery: [
-      "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=400",
-      "https://images.unsplash.com/photo-1565123409695-7b5ef63a24b5?w=400"
-    ],
-    organizerId: "org_1",
-    views: 450,
-    interestedUsers: ["usr_1"],
-    goingUsers: [],
-    savedUsers: [],
-    feedback: [],
-    updates: [
-      { id: "up_1", text: "Disponibili tavoli al coperto in caso di pioggia leggera!", date: new Date().toISOString() }
-    ]
-  },
-  {
-    id: "evt_2",
-    title: "Concerto Rock sotto le Stelle",
-    desc: "Una serata indimenticabile all'insegna del rock classico e alternativo. Band locali ed ospiti speciali si esibiranno sul palco principale. Servizio bar e area ristoro.",
-    date: (() => {
-      let d = new Date();
-      d.setDate(d.getDate() + 2); // 2 days from now (this week)
-      return d.toISOString().split('T')[0];
-    })(),
-    time: "21:00",
-    location: "Milano, Parco Sempione",
-    gps: { lat: 45.4735, lng: 9.1760 },
-    category: "Musica",
-    cost: "€15.00",
-    accessibili: true,
-    animali: false,
-    parcheggio: false,
-    maps_link: "https://maps.google.com/?q=45.4735,9.1760",
-    poster: "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=600&auto=format&fit=crop&q=60",
-    gallery: ["https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400"],
-    organizerId: "org_1",
-    views: 1200,
-    interestedUsers: [],
-    goingUsers: ["usr_1"],
-    savedUsers: [],
-    feedback: [],
-    updates: []
-  },
-  {
-    id: "evt_3",
-    title: "Sagra del Risotto e del Vino",
-    desc: "Vieni ad assaggiare i migliori risotti lombardi cucinati da chef locali, accompagnati da vini DOC selezionati. Area bimbi e balli popolari serali.",
-    date: (() => {
-      let d = new Date();
-      // Next Friday (weekend filter test)
-      let day = d.getDay();
-      let diff = (day <= 5 ? 5 - day : 12 - day);
-      d.setDate(d.getDate() + diff);
-      return d.toISOString().split('T')[0];
-    })(),
-    time: "12:00",
-    location: "Monza, Parco di Monza",
-    gps: { lat: 45.5845, lng: 9.2740 },
-    category: "Feste di paese",
-    cost: "Gratuito",
-    accessibili: true,
-    animali: true,
-    parcheggio: true,
-    maps_link: "https://maps.google.com/?q=45.5845,9.2740",
-    poster: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600",
-    gallery: [],
-    organizerId: "org_1",
-    views: 280,
-    interestedUsers: ["usr_1"],
-    goingUsers: [],
-    savedUsers: [],
-    feedback: [],
-    updates: []
-  },
-  {
-    id: "evt_4",
-    title: "Escursione Guidata e Birdwatching",
-    desc: "Un cammino immerso nella natura alla scoperta delle bellezze della Val di Mello. Adatto a famiglie. Pranzo al sacco o presso rifugio convenzionato.",
-    date: (() => {
-      let d = new Date();
-      d.setDate(d.getDate() + 15); // Later this month
-      return d.toISOString().split('T')[0];
-    })(),
-    time: "09:00",
-    location: "Val Masino, Sondrio",
-    gps: { lat: 46.2415, lng: 9.6372 },
-    category: "Escursioni",
-    cost: "€10.00",
-    accessibili: false,
-    animali: true,
-    parcheggio: true,
-    maps_link: "https://maps.google.com/?q=46.2415,9.6372",
-    poster: "https://images.unsplash.com/photo-1501555088652-021faa106b9b?w=600&auto=format&fit=crop&q=60",
-    gallery: [],
-    organizerId: "col_1",
-    views: 120,
-    interestedUsers: [],
-    goingUsers: [],
-    savedUsers: [],
-    feedback: [],
-    updates: []
-  },
-  {
-    id: "evt_past",
-    title: "Sagra degli Gnocchi fatti in Casa",
-    desc: "Un evento storico con degustazione di gnocchi al sugo, pesto e formaggio fuso. L'evento si è svolto ieri.",
-    date: (() => {
-      let d = new Date();
-      d.setDate(d.getDate() - 1); // Yesterday (to trigger feedback flow)
-      return d.toISOString().split('T')[0];
-    })(),
-    time: "19:30",
-    location: "Oleggio, Piazza Martiri",
-    gps: { lat: 45.5982, lng: 8.6369 },
-    category: "Feste di paese",
-    cost: "Gratuito",
-    accessibili: true,
-    animali: true,
-    parcheggio: true,
-    maps_link: "https://maps.google.com/?q=45.5982,8.6369",
-    poster: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600&auto=format&fit=crop&q=60",
-    gallery: [],
-    organizerId: "org_1",
-    views: 400,
-    interestedUsers: [],
-    goingUsers: ["usr_1"],
-    savedUsers: [],
-    feedback: [],
-    updates: []
-  },
-  {
-    id: "evt_venue",
-    title: "Aperitivo Navigli & DJ Set",
-    desc: "Un aperitivo esclusivo nel cuore di Milano Navigli. Cocktail bar, stuzzichini gourmet e DJ set deep house per ballare fino a tarda notte. Ingresso con consumazione obbligatoria.",
-    date: new Date().toISOString().split('T')[0], // Today
-    time: "19:30",
-    location: "Milano, Naviglio Grande",
-    gps: { lat: 45.4526, lng: 9.1712 },
-    category: "Feste nei locali",
-    cost: "€15.00",
-    accessibili: true,
-    animali: false,
-    parcheggio: false,
-    maps_link: "https://maps.google.com/?q=45.4526,9.1712",
-    poster: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600",
-    gallery: [],
-    organizerId: "org_1",
-    views: 650,
-    interestedUsers: [],
-    goingUsers: [],
-    savedUsers: [],
-    feedback: [],
-    updates: []
-  }
-];
+const DEFAULT_EVENTS = [];
 
 const DEFAULT_MESSAGES = [
   {
@@ -320,94 +151,30 @@ class LocalDB {
       localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
     }
 
+    // One-time migration to clear mock events and start clean
+    if (!localStorage.getItem("evt_production_ready")) {
+      localStorage.setItem("evt_events", JSON.stringify([]));
+      localStorage.setItem("evt_production_ready", "true");
+    }
+
     try {
       if (!localStorage.getItem("evt_events")) {
-        const seedEvents = DEFAULT_EVENTS.map(e => ({
-          ...e,
-          gallery: (e.gallery || []).map((url, idx) => ({
-            id: `img_${e.id}_${idx}_${Date.now()}`,
-            url: url,
-            uploaderId: e.organizerId || "org_1",
-            uploaderName: "Organizzatore",
-            likes: []
-          }))
-        }));
-        localStorage.setItem("evt_events", JSON.stringify(seedEvents));
+        localStorage.setItem("evt_events", JSON.stringify([]));
       } else {
         let storedEvents = localStorage.getItem("evt_events");
         if (storedEvents) {
           let parsed = JSON.parse(storedEvents);
           if (!Array.isArray(parsed)) {
-            const seedEvents = DEFAULT_EVENTS.map(e => ({
-              ...e,
-              gallery: (e.gallery || []).map((url, idx) => ({
-                id: `img_${e.id}_${idx}_${Date.now()}`,
-                url: url,
-                uploaderId: e.organizerId || "org_1",
-                uploaderName: "Organizzatore",
-                likes: []
-              }))
-            }));
-            localStorage.setItem("evt_events", JSON.stringify(seedEvents));
-            parsed = seedEvents;
+            localStorage.setItem("evt_events", JSON.stringify([]));
+            parsed = [];
           }
           let updated = false;
           parsed.forEach(e => {
-            if (e.id === "evt_1" && (!e.poster || e.poster.includes("1565123409695"))) {
-              e.poster = "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=600";
-              updated = true;
-            }
-            if (e.id === "evt_3" && (!e.poster || e.poster.includes("1544025162"))) {
-              e.poster = "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600";
-              updated = true;
-            }
-            // Category migration
             if (e.category === "Sagre" || e.category === "Feste patronali") {
               e.category = "Feste di paese";
               updated = true;
             }
-            // Gallery objects migration
-            if (e.gallery && e.gallery.length > 0 && typeof e.gallery[0] === 'string') {
-              e.gallery = e.gallery.map((url, idx) => ({
-                id: `img_${e.id}_${idx}_${Date.now()}`,
-                url: url,
-                uploaderId: e.organizerId || "org_1",
-                uploaderName: "Organizzatore",
-                likes: []
-              }));
-              updated = true;
-            }
           });
-
-          // Add evt_venue if missing
-          if (!parsed.some(e => e.id === "evt_venue")) {
-            const newSeedVenue = {
-              id: "evt_venue",
-              title: "Aperitivo Navigli & DJ Set",
-              desc: "Un aperitivo esclusivo nel cuore di Milano Navigli. Cocktail bar, stuzzichini gourmet e DJ set deep house per ballare fino a tarda notte. Ingresso con consumazione obbligatoria.",
-              date: new Date().toISOString().split('T')[0],
-              time: "19:30",
-              location: "Milano, Naviglio Grande",
-              gps: { lat: 45.4526, lng: 9.1712 },
-              category: "Feste nei locali",
-              cost: "€15.00",
-              accessibili: true,
-              animali: false,
-              parcheggio: false,
-              maps_link: "https://maps.google.com/?q=45.4526,9.1712",
-              poster: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600",
-              gallery: [],
-              organizerId: "org_1",
-              views: 650,
-              interestedUsers: [],
-              goingUsers: [],
-              savedUsers: [],
-              feedback: [],
-              updates: []
-            };
-            parsed.push(newSeedVenue);
-            updated = true;
-          }
 
           if (updated) {
             localStorage.setItem("evt_events", JSON.stringify(parsed));
@@ -416,7 +183,7 @@ class LocalDB {
       }
     } catch (e) {
       console.error("Error initializing events:", e);
-      localStorage.removeItem("evt_events");
+      localStorage.setItem("evt_events", JSON.stringify([]));
     }
 
     try {

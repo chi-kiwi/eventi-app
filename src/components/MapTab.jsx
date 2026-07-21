@@ -36,6 +36,7 @@ export default function MapTab({ events, onSelectEvent, user }) {
 
     // Calculate events near this new location to trigger realistic notification
     const nearbyEvents = events.filter(e => {
+      if (!e.gps) return false;
       const dist = getDistance(coords.lat, coords.lng, e.gps.lat, e.gps.lng);
       return dist <= 20; // within 20km
     });
@@ -52,6 +53,41 @@ export default function MapTab({ events, onSelectEvent, user }) {
       }, 6000);
     } else {
       setOnRoadNotification(null);
+    }
+  };
+
+  const handleDetectRealLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setUserCoords(coords);
+          setUserLocationName(language === 'en' ? "My GPS Coordinates" : "Tua Posizione GPS");
+          
+          const nearbyEvents = events.filter(e => {
+            if (!e.gps) return false;
+            const dist = getDistance(coords.lat, coords.lng, e.gps.lat, e.gps.lng);
+            return dist <= 20;
+          });
+
+          if (nearbyEvents.length > 0) {
+            setOnRoadNotification({
+              location: language === 'en' ? "current location" : "tua posizione attuale",
+              count: nearbyEvents.length,
+              category: nearbyEvents[0].category
+            });
+            setTimeout(() => setOnRoadNotification(null), 6000);
+          }
+        },
+        (error) => {
+          alert(language === 'en' ? "Could not access location. Using profile reference city." : "Impossibile accedere alla geolocalizzazione. Verrà usata la città del tuo profilo.");
+        }
+      );
+    } else {
+      alert(language === 'en' ? "Geolocation is not supported by your browser." : "La geolocalizzazione non è supportata dal tuo browser.");
     }
   };
 
@@ -173,9 +209,22 @@ export default function MapTab({ events, onSelectEvent, user }) {
 
       {/* Map Control Board */}
       <div className="glass-panel" style={{ padding: '16px' }}>
-        <h3 style={{ fontSize: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <MapPin size={18} color="var(--accent-primary)" /> {language === 'en' ? "Simulate your GPS position" : "Simula la tua posizione GPS"}
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+          <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+            <MapPin size={18} color="var(--accent-primary)" /> {language === 'en' ? "Your GPS Location:" : "La tua posizione:"}&nbsp;<span style={{ color: 'var(--text-secondary)', fontWeight: 'normal' }}>{userLocationName}</span>
+          </h3>
+          <button
+            onClick={handleDetectRealLocation}
+            className="btn btn-small"
+            style={{ width: 'auto', padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--gradient-premium)' }}
+          >
+            🛰️ {language === 'en' ? "Detect Real GPS" : "Rileva Posizione GPS"}
+          </button>
+        </div>
+        
+        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+          {language === 'en' ? "Or select a reference area:" : "Oppure seleziona un'area di riferimento:"}
+        </p>
         
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           {Object.keys(LOCATIONS).map(locName => (

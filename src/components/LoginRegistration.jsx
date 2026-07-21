@@ -93,7 +93,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
     const cleanCognome = regCognome.trim();
     const cleanComune = regComune.trim();
 
-    // Uniqueness checks in db (just pre-validation)
+    // Uniqueness checks in db
     const users = db.getUsers();
     if (users.some(u => u.email && u.email.toLowerCase() === cleanEmail)) {
       setRegError(language === 'en' ? "This email is already registered." : "Questa email è già associata a un altro account.");
@@ -108,8 +108,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       ? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
       : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150";
 
-    // Trigger verification simulator
-    setTempUser({
+    const res = db.register({
       name: cleanName,
       cognome: cleanCognome,
       email: cleanEmail,
@@ -121,74 +120,44 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       interests: regInterests,
       avatar: defaultAvatar
     });
-    setVerifyStep(true);
-    setOtpSuccess(false);
-  };
 
-  const handleVerifyOtp = (e) => {
-    e.preventDefault();
-    setOtpError('');
-    if (otpCode !== '1234') { // Mock verification code
-      setOtpError("Codice errato. Inserisci '1234' per simulare la verifica corretta.");
-      return;
-    }
-
-    // Verification success: Save user to db
-    const res = db.register(tempUser);
     if (res.success) {
-      setOtpSuccess(true);
-      setTimeout(() => {
-        onLoginSuccess(res.user);
-      }, 1500);
+      onLoginSuccess(res.user);
     } else {
-      setOtpError(res.message);
+      setRegError(res.message);
     }
   };
 
   const handleRecoverySubmit = (e) => {
     e.preventDefault();
     setRecoveryError('');
+    setRecoverySuccess('');
     const cleanContact = recoveryContact.trim().toLowerCase();
-    if (recoveryStep === 1) {
-      if (!recoveryContact) {
-        setRecoveryError("Inserisci email o numero di telefono.");
-        return;
-      }
-      const users = db.getUsers();
-      const userExists = users.some(u => 
-        (u.email && u.email.toLowerCase() === cleanContact) || 
-        (u.phone === cleanContact)
-      );
-      if (!userExists) {
-        setRecoveryError("Nessun account associato a questo recapito.");
-        return;
-      }
-      // Advance to step 2
-      setRecoveryStep(2);
+    if (!recoveryContact || !recoveryNewPass) {
+      setRecoveryError(language === 'en' ? "Please fill all fields." : "Compila tutti i campi.");
+      return;
+    }
+    const users = db.getUsers();
+    const userExists = users.some(u => 
+      (u.email && u.email.toLowerCase() === cleanContact) || 
+      (u.phone === cleanContact)
+    );
+    if (!userExists) {
+      setRecoveryError(language === 'en' ? "No account associated with this contact." : "Nessun account associato a questo recapito.");
+      return;
+    }
+    const res = db.resetPassword(cleanContact, recoveryNewPass);
+    if (res.success) {
+      setRecoverySuccess(language === 'en' ? "Password reset successfully! Redirecting to login..." : "Password reimpostata con successo! Verrai reindirizzato al login.");
+      setTimeout(() => {
+        setIsRecover(false);
+        setRecoverySuccess('');
+        setRecoveryContact('');
+        setRecoveryNewPass('');
+        setIsLogin(true);
+      }, 2000);
     } else {
-      if (!recoveryOtp || !recoveryNewPass) {
-        setRecoveryError("Compila tutti i campi.");
-        return;
-      }
-      if (recoveryOtp !== '1234') {
-        setRecoveryError("Codice OTP errato. Usa '1234' per simulare.");
-        return;
-      }
-      const res = db.resetPassword(cleanContact, recoveryNewPass);
-      if (res.success) {
-        setRecoverySuccess("Password reimpostata con successo! Verrai reindirizzato al login.");
-        setTimeout(() => {
-          setIsRecover(false);
-          setRecoveryStep(1);
-          setRecoverySuccess('');
-          setRecoveryContact('');
-          setRecoveryOtp('');
-          setRecoveryNewPass('');
-          setIsLogin(true);
-        }, 2000);
-      } else {
-        setRecoveryError(res.message);
-      }
+      setRecoveryError(res.message);
     }
   };
 
@@ -236,60 +205,6 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
     </div>
   );
 
-  if (verifyStep) {
-    return (
-      <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
-        <ThemeLangBar />
-        <div className="glass-panel" style={{ padding: '30px', textAlign: 'center' }}>
-          <div style={{ background: 'var(--gradient-primary)', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <Mail size={30} color="white" />
-          </div>
-          
-          <h2 style={{ marginBottom: '10px' }}>{language === 'en' ? "Verify your Identity" : "Verifica la tua Identità"}</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
-            {language === 'en' 
-              ? `We sent a confirmation code to ${tempUser?.email}. Enter the code to activate your account.` 
-              : `Abbiamo inviato un codice di conferma a ${tempUser?.email}. Inserisci il codice per attivare l'account.`}
-          </p>
-
-          {otpSuccess ? (
-            <div className="animate-fade-in" style={{ color: 'var(--accent-green)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-              <CheckCircle size={40} />
-              <p style={{ fontWeight: 600 }}>{language === 'en' ? "Identity verified successfully!" : "Identità Verificata con successo!"}</p>
-            </div>
-          ) : (
-            <form onSubmit={handleVerifyOtp}>
-              <div className="form-group">
-                <label className="form-label">{language === 'en' ? "Confirmation OTP Code" : "Codice OTP di Conferma"}</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder={language === 'en' ? "Enter 1234" : "Inserisci 1234"} 
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '8px', fontWeight: 'bold' }}
-                />
-              </div>
-
-              {otpError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', margin: '-8px 0 16px' }}>{otpError}</p>}
-
-              <button type="submit" className="btn btn-primary" style={{ marginBottom: '12px' }}>
-                {language === 'en' ? "Confirm and Log In" : "Conferma e Accedi"}
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-secondary btn-small"
-                onClick={() => setVerifyStep(false)}
-              >
-                {language === 'en' ? "Cancel and Go Back" : "Annulla e Torna Indietro"}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   if (isRecover) {
     return (
       <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
@@ -297,74 +212,55 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
         <div className="glass-panel" style={{ padding: '30px' }}>
           <h2 style={{ marginBottom: '8px', textAlign: 'center' }}>{language === 'en' ? "Password Recovery" : "Recupero Password"}</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', textAlign: 'center' }}>
-            {recoveryStep === 1 
-              ? (language === 'en' ? "Enter your contact details to receive a link or OTP code." : "Inserisci il tuo contatto per ricevere un link o un codice OTP.") 
-              : (language === 'en' ? "Enter the received OTP code and your new password." : "Inserisci l'OTP ricevuto e la tua nuova password.")}
+            {language === 'en' ? "Enter your contact and your new password." : "Inserisci il tuo contatto e la nuova password."}
           </p>
 
           {recoverySuccess && (
-            <div className="banner" style={{ borderLeft: '4px solid var(--accent-green)', background: 'rgba(16, 185, 129, 0.1)' }}>
-              <span style={{ color: 'var(--accent-green)' }}>{recoverySuccess}</span>
+            <div className="banner" style={{ borderLeft: '4px solid var(--accent-green)', background: 'rgba(16, 185, 129, 0.1)', marginBottom: '16px' }}>
+              <span style={{ color: 'var(--accent-green)', fontSize: '13px' }}>{recoverySuccess}</span>
             </div>
           )}
 
           <form onSubmit={handleRecoverySubmit}>
-            {recoveryStep === 1 ? (
-              <div className="form-group">
-                <label className="form-label">{language === 'en' ? "Email or Mobile Number" : "Email o Numero di Telefono"}</label>
-                <div style={{ position: 'relative' }}>
-                  <Mail size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="email@example.com o 3331234567" 
-                    value={recoveryContact}
-                    onChange={(e) => setRecoveryContact(e.target.value)}
-                    style={{ paddingLeft: '42px' }}
-                  />
-                </div>
+            <div className="form-group">
+              <label className="form-label">{language === 'en' ? "Email or Mobile Number" : "Email o Numero di Telefono"}</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="email@example.com o 3331234567" 
+                  value={recoveryContact}
+                  onChange={(e) => setRecoveryContact(e.target.value)}
+                  style={{ paddingLeft: '42px' }}
+                />
               </div>
-            ) : (
-              <>
-                <div className="form-group">
-                  <label className="form-label">{language === 'en' ? "OTP Code (sent via Email/SMS)" : "Codice OTP (inviato via Email/SMS)"}</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder={language === 'en' ? "Enter 1234" : "Inserisci 1234"} 
-                    value={recoveryOtp}
-                    onChange={(e) => setRecoveryOtp(e.target.value)}
-                    style={{ textAlign: 'center', fontSize: '18px', letterSpacing: '4px' }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{language === 'en' ? "New Password" : "Nuova Password"}</label>
-                  <div style={{ position: 'relative' }}>
-                    <Lock size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
-                    <input 
-                      type="password" 
-                      className="form-input" 
-                      placeholder={language === 'en' ? "Create a new password" : "Crea una nuova password"} 
-                      value={recoveryNewPass}
-                      onChange={(e) => setRecoveryNewPass(e.target.value)}
-                      style={{ paddingLeft: '42px' }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">{language === 'en' ? "New Password" : "Nuova Password"}</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                <input 
+                  type="password" 
+                  className="form-input" 
+                  placeholder={language === 'en' ? "Create a new password" : "Crea una nuova password"} 
+                  value={recoveryNewPass}
+                  onChange={(e) => setRecoveryNewPass(e.target.value)}
+                  style={{ paddingLeft: '42px' }}
+                />
+              </div>
+            </div>
 
             {recoveryError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', margin: '-8px 0 16px' }}>{recoveryError}</p>}
 
             <button type="submit" className="btn btn-primary" style={{ marginBottom: '12px' }}>
-              {recoveryStep === 1 
-                ? (language === 'en' ? "Send OTP Code" : "Invia Codice OTP") 
-                : (language === 'en' ? "Reset Password" : "Reimposta Password")}
+              {language === 'en' ? "Reset Password" : "Reimposta Password"}
             </button>
             <button 
               type="button" 
               className="btn btn-secondary"
-              onClick={() => { setIsRecover(false); setRecoveryStep(1); setRecoveryError(''); }}
+              onClick={() => { setIsRecover(false); setRecoveryError(''); setRecoverySuccess(''); }}
             >
               {language === 'en' ? "Back to Login" : "Torna al Login"}
             </button>
@@ -608,7 +504,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
             {regError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', marginBottom: '16px' }}>{regError}</p>}
 
             <button type="submit" className="btn btn-primary">
-              {language === 'en' ? "Create Account & Send Code" : "Crea Account ed Invia Codice"}
+              {language === 'en' ? "Create Account" : "Crea Account"}
             </button>
           </form>
         )}
@@ -616,15 +512,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
 
       <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
 
-      <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
-        <p>{language === 'en' ? "Pre-configured test credentials:" : "Credenziali di test pre-configurate:"}</p>
-        <p style={{ marginTop: '4px' }}>
-          {language === 'en' ? "Attendee" : "Utente"}: <strong style={{ color: 'var(--text-secondary)' }}>user@events.com</strong> / password123
-        </p>
-        <p>
-          {language === 'en' ? "Organizer" : "Organizzatore"}: <strong style={{ color: 'var(--text-secondary)' }}>organizer@events.com</strong> / password123
-        </p>
-      </div>
+      {/* Test credentials box removed */}
     </div>
   );
 }
