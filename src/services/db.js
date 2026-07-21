@@ -289,171 +289,235 @@ class LocalDB {
   }
 
   init() {
-    if (!localStorage.getItem("evt_users")) {
+    try {
+      if (!localStorage.getItem("evt_users")) {
+        localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
+      } else {
+        let storedUsers = localStorage.getItem("evt_users");
+        if (storedUsers) {
+          let parsed = JSON.parse(storedUsers);
+          if (!Array.isArray(parsed)) {
+            localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
+            parsed = DEFAULT_USERS;
+          }
+          let updated = false;
+          parsed.forEach(u => {
+            if (!u.avatar) {
+              if (u.id === "usr_1") u.avatar = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150";
+              else if (u.id === "org_1") u.avatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150";
+              else if (u.id === "col_1") u.avatar = "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150";
+              else u.avatar = "";
+              updated = true;
+            }
+          });
+          if (updated) {
+            localStorage.setItem("evt_users", JSON.stringify(parsed));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error initializing users:", e);
       localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
-    } else {
-      let storedUsers = localStorage.getItem("evt_users");
-      if (storedUsers) {
-        let parsed = JSON.parse(storedUsers);
-        let updated = false;
-        parsed.forEach(u => {
-          if (!u.avatar) {
-            if (u.id === "usr_1") u.avatar = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150";
-            else if (u.id === "org_1") u.avatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150";
-            else if (u.id === "col_1") u.avatar = "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150";
-            else u.avatar = "";
-            updated = true;
-          }
-        });
-        if (updated) {
-          localStorage.setItem("evt_users", JSON.stringify(parsed));
-        }
-      }
     }
-    if (!localStorage.getItem("evt_events")) {
-      // Ensure DEFAULT_EVENTS are also mapped as objects on new installs
-      const seedEvents = DEFAULT_EVENTS.map(e => ({
-        ...e,
-        gallery: (e.gallery || []).map((url, idx) => ({
-          id: `img_${e.id}_${idx}_${Date.now()}`,
-          url: url,
-          uploaderId: e.organizerId || "org_1",
-          uploaderName: "Organizzatore",
-          likes: []
-        }))
-      }));
-      localStorage.setItem("evt_events", JSON.stringify(seedEvents));
-    } else {
-      // Force fix, gallery object migration, and category split migration
-      let storedEvents = localStorage.getItem("evt_events");
-      if (storedEvents) {
-        let parsed = JSON.parse(storedEvents);
-        let updated = false;
-        parsed.forEach(e => {
-          if (e.id === "evt_1" && (!e.poster || e.poster.includes("1565123409695"))) {
-            e.poster = "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=600";
-            updated = true;
-          }
-          if (e.id === "evt_3" && (!e.poster || e.poster.includes("1544025162"))) {
-            e.poster = "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600";
-            updated = true;
-          }
-          // Category migration
-          if (e.category === "Sagre" || e.category === "Feste patronali") {
-            e.category = "Feste di paese";
-            updated = true;
-          }
-          // Gallery objects migration
-          if (e.gallery && e.gallery.length > 0 && typeof e.gallery[0] === 'string') {
-            e.gallery = e.gallery.map((url, idx) => ({
-              id: `img_${e.id}_${idx}_${Date.now()}`,
-              url: url,
-              uploaderId: e.organizerId || "org_1",
-              uploaderName: "Organizzatore",
-              likes: []
+
+    try {
+      if (!localStorage.getItem("evt_events")) {
+        const seedEvents = DEFAULT_EVENTS.map(e => ({
+          ...e,
+          gallery: (e.gallery || []).map((url, idx) => ({
+            id: `img_${e.id}_${idx}_${Date.now()}`,
+            url: url,
+            uploaderId: e.organizerId || "org_1",
+            uploaderName: "Organizzatore",
+            likes: []
+          }))
+        }));
+        localStorage.setItem("evt_events", JSON.stringify(seedEvents));
+      } else {
+        let storedEvents = localStorage.getItem("evt_events");
+        if (storedEvents) {
+          let parsed = JSON.parse(storedEvents);
+          if (!Array.isArray(parsed)) {
+            const seedEvents = DEFAULT_EVENTS.map(e => ({
+              ...e,
+              gallery: (e.gallery || []).map((url, idx) => ({
+                id: `img_${e.id}_${idx}_${Date.now()}`,
+                url: url,
+                uploaderId: e.organizerId || "org_1",
+                uploaderName: "Organizzatore",
+                likes: []
+              }))
             }));
+            localStorage.setItem("evt_events", JSON.stringify(seedEvents));
+            parsed = seedEvents;
+          }
+          let updated = false;
+          parsed.forEach(e => {
+            if (e.id === "evt_1" && (!e.poster || e.poster.includes("1565123409695"))) {
+              e.poster = "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=600";
+              updated = true;
+            }
+            if (e.id === "evt_3" && (!e.poster || e.poster.includes("1544025162"))) {
+              e.poster = "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600";
+              updated = true;
+            }
+            // Category migration
+            if (e.category === "Sagre" || e.category === "Feste patronali") {
+              e.category = "Feste di paese";
+              updated = true;
+            }
+            // Gallery objects migration
+            if (e.gallery && e.gallery.length > 0 && typeof e.gallery[0] === 'string') {
+              e.gallery = e.gallery.map((url, idx) => ({
+                id: `img_${e.id}_${idx}_${Date.now()}`,
+                url: url,
+                uploaderId: e.organizerId || "org_1",
+                uploaderName: "Organizzatore",
+                likes: []
+              }));
+              updated = true;
+            }
+          });
+
+          // Add evt_venue if missing
+          if (!parsed.some(e => e.id === "evt_venue")) {
+            const newSeedVenue = {
+              id: "evt_venue",
+              title: "Aperitivo Navigli & DJ Set",
+              desc: "Un aperitivo esclusivo nel cuore di Milano Navigli. Cocktail bar, stuzzichini gourmet e DJ set deep house per ballare fino a tarda notte. Ingresso con consumazione obbligatoria.",
+              date: new Date().toISOString().split('T')[0],
+              time: "19:30",
+              location: "Milano, Naviglio Grande",
+              gps: { lat: 45.4526, lng: 9.1712 },
+              category: "Feste nei locali",
+              cost: "€15.00",
+              accessibili: true,
+              animali: false,
+              parcheggio: false,
+              maps_link: "https://maps.google.com/?q=45.4526,9.1712",
+              poster: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600",
+              gallery: [],
+              organizerId: "org_1",
+              views: 650,
+              interestedUsers: [],
+              goingUsers: [],
+              savedUsers: [],
+              feedback: [],
+              updates: []
+            };
+            parsed.push(newSeedVenue);
             updated = true;
           }
-        });
 
-        // Add evt_venue if missing
-        if (!parsed.some(e => e.id === "evt_venue")) {
-          const newSeedVenue = {
-            id: "evt_venue",
-            title: "Aperitivo Navigli & DJ Set",
-            desc: "Un aperitivo esclusivo nel cuore di Milano Navigli. Cocktail bar, stuzzichini gourmet e DJ set deep house per ballare fino a tarda notte. Ingresso con consumazione obbligatoria.",
-            date: new Date().toISOString().split('T')[0], // Today
-            time: "19:30",
-            location: "Milano, Naviglio Grande",
-            gps: { lat: 45.4526, lng: 9.1712 },
-            category: "Feste nei locali",
-            cost: "€15.00",
-            accessibili: true,
-            animali: false,
-            parcheggio: false,
-            maps_link: "https://maps.google.com/?q=45.4526,9.1712",
-            poster: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600",
-            gallery: [],
-            organizerId: "org_1",
-            views: 650,
-            interestedUsers: [],
-            goingUsers: [],
-            savedUsers: [],
-            feedback: [],
-            updates: []
-          };
-          parsed.push(newSeedVenue);
-          updated = true;
-        }
-
-        if (updated) {
-          localStorage.setItem("evt_events", JSON.stringify(parsed));
+          if (updated) {
+            localStorage.setItem("evt_events", JSON.stringify(parsed));
+          }
         }
       }
+    } catch (e) {
+      console.error("Error initializing events:", e);
+      localStorage.removeItem("evt_events");
     }
-    if (!localStorage.getItem("evt_messages")) {
-      localStorage.setItem("evt_messages", JSON.stringify(DEFAULT_MESSAGES));
+
+    try {
+      if (!localStorage.getItem("evt_messages")) {
+        localStorage.setItem("evt_messages", JSON.stringify(DEFAULT_MESSAGES));
+      }
+    } catch (e) {
+      console.error("Error initializing messages:", e);
     }
-    // Track feedback surveys done by user
-    if (!localStorage.getItem("evt_feedback_done")) {
-      localStorage.setItem("evt_feedback_done", JSON.stringify([]));
+
+    try {
+      if (!localStorage.getItem("evt_feedback_done")) {
+        localStorage.setItem("evt_feedback_done", JSON.stringify([]));
+      }
+    } catch (e) {
+      console.error("Error initializing feedback_done:", e);
     }
-    // Initialize community messages
-    if (!localStorage.getItem("evt_community_messages")) {
-      const defaultCommunityMessages = [
-        {
-          id: "cm_init_1",
-          eventId: "evt_1",
-          userId: "usr_1",
-          userName: "Chiara Rossi",
-          userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
-          text: "Ciao a tutti! Qualcuno sa se ci sono opzioni senza glutine tra i food truck?",
-          timestamp: new Date(Date.now() - 7200000).toISOString()
-        },
-        {
-          id: "cm_init_2",
-          eventId: "evt_1",
-          userId: "org_1",
-          userName: "Marco Bianchi",
-          userAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
-          text: "Sì Chiara! Ci saranno ben 4 truck dedicati interamente al gluten-free, segnalati all'ingresso. Ti aspettiamo!",
-          timestamp: new Date(Date.now() - 3600000).toISOString()
-        }
-      ];
-      localStorage.setItem("evt_community_messages", JSON.stringify(defaultCommunityMessages));
+
+    try {
+      if (!localStorage.getItem("evt_community_messages")) {
+        const defaultCommunityMessages = [
+          {
+            id: "cm_init_1",
+            eventId: "evt_1",
+            userId: "usr_1",
+            userName: "Chiara Rossi",
+            userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+            text: "Ciao a tutti! Qualcuno sa se ci sono opzioni senza glutine tra i food truck?",
+            timestamp: new Date(Date.now() - 7200000).toISOString()
+          },
+          {
+            id: "cm_init_2",
+            eventId: "evt_1",
+            userId: "org_1",
+            userName: "Marco Bianchi",
+            userAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+            text: "Sì Chiara! Ci saranno ben 4 truck dedicati interamente al gluten-free, segnalati all'ingresso. Ti aspettiamo!",
+            timestamp: new Date(Date.now() - 3600000).toISOString()
+          }
+        ];
+        localStorage.setItem("evt_community_messages", JSON.stringify(defaultCommunityMessages));
+      }
+    } catch (e) {
+      console.error("Error initializing community messages:", e);
     }
   }
 
   getUsers() {
-    return JSON.parse(localStorage.getItem("evt_users") || "[]");
+    try {
+      return JSON.parse(localStorage.getItem("evt_users") || "[]");
+    } catch (e) {
+      return [];
+    }
   }
 
   saveUsers(users) {
-    localStorage.setItem("evt_users", JSON.stringify(users));
+    try {
+      localStorage.setItem("evt_users", JSON.stringify(users));
+    } catch (e) {}
   }
 
   getEvents() {
-    return JSON.parse(localStorage.getItem("evt_events") || "[]");
+    try {
+      return JSON.parse(localStorage.getItem("evt_events") || "[]");
+    } catch (e) {
+      return [];
+    }
   }
 
   saveEvents(events) {
-    localStorage.setItem("evt_events", JSON.stringify(events));
+    try {
+      localStorage.setItem("evt_events", JSON.stringify(events));
+    } catch (e) {}
   }
 
   getMessages() {
-    return JSON.parse(localStorage.getItem("evt_messages") || "[]");
+    try {
+      return JSON.parse(localStorage.getItem("evt_messages") || "[]");
+    } catch (e) {
+      return [];
+    }
   }
 
   saveMessages(messages) {
-    localStorage.setItem("evt_messages", JSON.stringify(messages));
+    try {
+      localStorage.setItem("evt_messages", JSON.stringify(messages));
+    } catch (e) {}
   }
 
   getFeedbackDone() {
-    return JSON.parse(localStorage.getItem("evt_feedback_done") || "[]");
+    try {
+      return JSON.parse(localStorage.getItem("evt_feedback_done") || "[]");
+    } catch (e) {
+      return [];
+    }
   }
 
   saveFeedbackDone(done) {
-    localStorage.setItem("evt_feedback_done", JSON.stringify(done));
+    try {
+      localStorage.setItem("evt_feedback_done", JSON.stringify(done));
+    } catch (e) {}
   }
 
   // Auth Functions
