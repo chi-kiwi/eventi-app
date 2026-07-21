@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Heart, Check, Bookmark, ArrowLeft, Shield, Map, ExternalLink, CalendarPlus, MessageSquare, Info, ShieldAlert, Plus, ChevronLeft, ChevronRight, X, Image as ImageIcon, User, Share2, QrCode, Ticket, Copy, CheckCircle2 } from 'lucide-react';
-import { db } from '../services/db';
+import { Calendar, MapPin, Heart, Check, Bookmark, ArrowLeft, Shield, Map, ExternalLink, CalendarPlus, MessageSquare, Info, ShieldAlert, Plus, ChevronLeft, ChevronRight, X, Image as ImageIcon, User, Share2, QrCode, Ticket, Copy, CheckCircle2, Trash2 } from 'lucide-react';
+import { db, getDistance } from '../services/db';
 import { useLanguage } from '../services/i18n.jsx';
 import { fetchLiveWeather } from '../services/weather';
 
@@ -11,7 +11,7 @@ const PHOTO_PRESETS = [
   { name: "🏞️ Escursione Natura", url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800" }
 ];
 
-export default function EventDetails({ event, user, onBack, onToggleParticipation, onStartChat, onProfileUpdated }) {
+export default function EventDetails({ event, user, onBack, onToggleParticipation, onStartChat, onProfileUpdated, onRefreshEvents }) {
   const { language, t } = useLanguage();
   const [showDirectionsMenu, setShowDirectionsMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -32,6 +32,131 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
   const [newMessageText, setNewMessageText] = useState('');
   const [galleryUpdateCounter, setGalleryUpdateCounter] = useState(0);
 
+  // Edit Event States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState(event.title);
+  const [editDesc, setEditDesc] = useState(event.desc);
+  const [editDate, setEditDate] = useState(event.date);
+  const [editTime, setEditTime] = useState(event.time);
+  const [editLocation, setEditLocation] = useState(event.location);
+  const [editLat, setEditLat] = useState(event.gps?.lat?.toString() || '45.4642');
+  const [editLng, setEditLng] = useState(event.gps?.lng?.toString() || '9.1900');
+  const [editCategory, setEditCategory] = useState(event.category);
+  const [editCost, setEditCost] = useState(event.cost);
+  const [editMaxCapacity, setEditMaxCapacity] = useState(event.maxCapacity?.toString() || '150');
+  const [editTicketUrl, setEditTicketUrl] = useState(event.ticketUrl || '');
+  const [editAccessibili, setEditAccessibili] = useState(event.accessibili ?? true);
+  const [editAnimali, setEditAnimali] = useState(event.animali ?? true);
+  const [editParcheggio, setEditParcheggio] = useState(event.parcheggio ?? true);
+  const [editPoster, setEditPoster] = useState(event.poster || '');
+  const [editError, setEditError] = useState('');
+  const [editSuccess, setEditSuccess] = useState('');
+
+  // Sync edit states on event change
+  useEffect(() => {
+    setEditTitle(event.title);
+    setEditDesc(event.desc);
+    setEditDate(event.date);
+    setEditTime(event.time);
+    setEditLocation(event.location);
+    setEditLat(event.gps?.lat?.toString() || '45.4642');
+    setEditLng(event.gps?.lng?.toString() || '9.1900');
+    setEditCategory(event.category);
+    setEditCost(event.cost);
+    setEditMaxCapacity(event.maxCapacity?.toString() || '150');
+    setEditTicketUrl(event.ticketUrl || '');
+    setEditAccessibili(event.accessibili ?? true);
+    setEditAnimali(event.animali ?? true);
+    setEditParcheggio(event.parcheggio ?? true);
+    setEditPoster(event.poster || '');
+    setEditError('');
+    setEditSuccess('');
+  }, [event]);
+
+  // Geocoding on edit address blur
+  const handleEditGeocode = async (address) => {
+    if (!address || address.trim().length < 3) return;
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        setEditLat(parseFloat(data[0].lat).toFixed(4));
+        setEditLng(parseFloat(data[0].lon).toFixed(4));
+      }
+    } catch (e) {
+      console.error("Geocoding failed:", e);
+    }
+  };
+
+  // Save changes handler
+  const handleSaveEdit = (e) => {
+    e.preventDefault();
+    setEditError('');
+    setEditSuccess('');
+
+    if (!editTitle || !editDesc || !editDate || !editTime || !editLocation) {
+      setEditError("Per favore, compila tutti i campi fondamentali.");
+      return;
+    }
+
+    // Proximity alert: check if there's already any event within 30 km on the same day (excluding itself)
+    const sameDayEvents = db.getEvents().filter(evt => evt.date === editDate && evt.id !== event.id);
+    const nearbyConflict = sameDayEvents.find(evt => {
+      const dist = getDistance(parseFloat(editLat), parseFloat(editLng), evt.gps.lat, evt.gps.lng);
+      return dist <= 30;
+    });
+
+    if (nearbyConflict) {
+      const dist = getDistance(parseFloat(editLat), parseFloat(editLng), nearbyConflict.gps.lat, nearbyConflict.gps.lng).toFixed(1);
+      alert(`Attenzione: c'è già un altro evento programmato per questa data entro 30 km di distanza!\n\nEvento: "${nearbyConflict.title}" a ${nearbyConflict.location} (${dist} km di distanza)`);
+    }
+
+    const updatedFields = {
+      title: editTitle,
+      desc: editDesc,
+      date: editDate,
+      time: editTime,
+      location: editLocation,
+      gps: { lat: parseFloat(editLat), lng: parseFloat(editLng) },
+      category: editCategory,
+      cost: editCost,
+      maxCapacity: parseInt(editMaxCapacity) || 0,
+      ticketUrl: editTicketUrl.trim(),
+      accessibili: editAccessibili,
+      animali: editAnimali,
+      parcheggio: editParcheggio,
+      poster: editPoster
+    };
+
+    const res = db.editEvent(event.id, updatedFields, user.id);
+    if (res.success) {
+      setEditSuccess("Evento aggiornato con successo!");
+      Object.assign(event, res.event); // update details display in-place
+      setTimeout(() => {
+        setShowEditModal(false);
+        if (onRefreshEvents) onRefreshEvents();
+      }, 1000);
+    } else {
+      setEditError(res.message);
+    }
+  };
+
+  // Delete event handler
+  const handleDeleteEvent = () => {
+    const proceed = window.confirm("Sei sicuro di voler eliminare definitivamente questo evento? Questa azione è irreversibile.");
+    if (!proceed) return;
+
+    const res = db.deleteEvent(event.id, user.id);
+    if (res.success) {
+      alert("Evento eliminato con successo.");
+      setShowEditModal(false);
+      if (onRefreshEvents) onRefreshEvents();
+      onBack();
+    } else {
+      alert(res.message);
+    }
+  };
+
   useEffect(() => {
     setCommunityMessages(db.getCommunityMessages(event.id));
     if (event.gps) {
@@ -46,6 +171,11 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
   const isInterested = user && event.interestedUsers?.includes(user.id);
   const isGoing = user && event.goingUsers?.includes(user.id);
   const isSaved = user && event.savedUsers?.includes(user.id);
+
+  const canEdit = user && (
+    event.organizerId === user.id || 
+    (user.role === 'collaboratore' && event.organizerId === user.invitedBy)
+  );
 
   // Generate calendar export links
   const getGoogleCalendarUrl = () => {
@@ -214,14 +344,25 @@ END:VCALENDAR`;
     <div className="view-content animate-slide-in" style={{ padding: '0 0 40px' }}>
       
       {/* Header Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', background: 'var(--bg-glass)', borderBottom: '1px solid var(--border-glass)', sticky: 'top', zIndex: 10 }}>
-        <button 
-          onClick={onBack}
-          style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-        >
-          <ArrowLeft size={24} />
-        </button>
-        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{language === 'en' ? "Event Details" : "Dettaglio Evento"}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'var(--bg-glass)', borderBottom: '1px solid var(--border-glass)', sticky: 'top', zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button 
+            onClick={onBack}
+            style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{language === 'en' ? "Event Details" : "Dettaglio Evento"}</span>
+        </div>
+        {canEdit && (
+          <button 
+            onClick={() => setShowEditModal(true)}
+            className="btn btn-secondary btn-small"
+            style={{ width: 'auto', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+          >
+            ✏️ {language === 'en' ? "Edit Event" : "Modifica Evento"}
+          </button>
+        )}
       </div>
 
       {/* Main Poster */}
@@ -867,6 +1008,221 @@ END:VCALENDAR`;
                 Chiudi Pass
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: EDIT EVENT MODAL */}
+      {showEditModal && (
+        <div className="modal-overlay animate-fade-in" style={{ zIndex: 200 }}>
+          <div className="modal-content" style={{ padding: '20px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: 'bold' }}>
+                ✏️ {language === 'en' ? "Edit Event" : "Modifica Evento"}
+              </h3>
+              <button 
+                onClick={() => setShowEditModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit}>
+              {editError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', marginBottom: '10px' }}>{editError}</p>}
+              {editSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '13px', marginBottom: '10px' }}>{editSuccess}</p>}
+
+              <div className="form-group">
+                <label className="form-label">{language === 'en' ? "Title" : "Titolo Evento"}</label>
+                <input type="text" className="form-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">{language === 'en' ? "Description" : "Descrizione"}</label>
+                <textarea className="form-input" style={{ height: '80px', resize: 'none' }} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+              </div>
+
+              {(!user || event.organizerId === user.id) ? (
+                <>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">{language === 'en' ? "Date" : "Data"}</label>
+                      <input type="date" className="form-input" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">{language === 'en' ? "Time" : "Ora"}</label>
+                      <input type="time" className="form-input" value={editTime} onChange={(e) => setEditTime(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">{language === 'en' ? "Address / Location" : "Indirizzo / Luogo"}</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={editLocation} 
+                      onChange={(e) => setEditLocation(e.target.value)} 
+                      onBlur={(e) => handleEditGeocode(e.target.value)}
+                    />
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{language === 'en' ? "GPS coordinates will be auto-filled" : "Le coordinate GPS verranno calcolate automaticamente sulla sfocatura"}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">GPS Latitudine</label>
+                      <input type="text" className="form-input" value={editLat} onChange={(e) => setEditLat(e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">GPS Longitudine</label>
+                      <input type="text" className="form-input" value={editLng} onChange={(e) => setEditLng(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">{language === 'en' ? "Category" : "Categoria"}</label>
+                      <select className="form-input form-select" value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+                        <option value="Feste di paese">Feste di paese</option>
+                        <option value="Feste nei locali">Feste nei locali</option>
+                        <option value="Musica">Musica</option>
+                        <option value="Motori">Motori</option>
+                        <option value="Escursioni">Escursioni</option>
+                        <option value="Sport">Sport</option>
+                        <option value="Mercatini">Mercatini</option>
+                        <option value="Street food">Street food</option>
+                        <option value="Bambini/Famiglie">Bambini/Famiglie</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">{language === 'en' ? "Cost" : "Costo"}</label>
+                      <input type="text" className="form-input" value={editCost} onChange={(e) => setEditCost(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">{language === 'en' ? "Capacity" : "Capienza"}</label>
+                      <input type="number" className="form-input" value={editMaxCapacity} onChange={(e) => setEditMaxCapacity(e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">{language === 'en' ? "Ticket Link" : "Link Biglietti"}</label>
+                      <input type="text" className="form-input" value={editTicketUrl} onChange={(e) => setEditTicketUrl(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Drag and drop / upload poster for Edit Event */}
+                  <div className="form-group">
+                    <label className="form-label">{language === 'en' ? "Poster Image" : "Locandina Evento (Carica o Trascina)"}</label>
+                    {editPoster && !editPoster.startsWith('http') && editPoster.trim() !== '' ? (
+                      <div style={{ position: 'relative', width: '100%', height: '120px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-glass)', marginBottom: '8px' }}>
+                        <img src={editPoster} alt="Locandina" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button 
+                          type="button" 
+                          onClick={() => setEditPoster('')}
+                          style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(239, 68, 110, 0.9)', border: 'none', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const file = e.dataTransfer.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (evt) => setEditPoster(evt.target.result);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        onClick={() => document.getElementById('edit-poster-file-input').click()}
+                        style={{ 
+                          border: '2px dashed var(--border-glass)', 
+                          borderRadius: '8px', 
+                          padding: '16px', 
+                          textAlign: 'center', 
+                          cursor: 'pointer', 
+                          background: 'var(--bg-secondary)', 
+                          marginBottom: '8px'
+                        }}
+                      >
+                        <input 
+                          type="file" 
+                          id="edit-poster-file-input" 
+                          accept="image/*" 
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (evt) => setEditPoster(evt.target.result);
+                              reader.readAsDataURL(file);
+                            }
+                          }} 
+                          style={{ display: 'none' }} 
+                        />
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          📁 Trascina qui l'immagine o <strong style={{ color: 'var(--accent-primary)' }}>clicca per caricare</strong>
+                        </p>
+                      </div>
+                    )}
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="O inserisci link URL esterno..." 
+                      value={editPoster} 
+                      onChange={(e) => setEditPoster(e.target.value)} 
+                      style={{ fontSize: '11px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+                    <label className="form-label">{language === 'en' ? "Amenities" : "Servizi e utilità"}</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <input type="checkbox" checked={editAccessibili} onChange={(e) => setEditAccessibili(e.target.checked)} />
+                        {language === 'en' ? "Accessible" : "Disabili"}
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <input type="checkbox" checked={editAnimali} onChange={(e) => setEditAnimali(e.target.checked)} />
+                        {language === 'en' ? "Pets Allowed" : "Animali"}
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <input type="checkbox" checked={editParcheggio} onChange={(e) => setEditParcheggio(e.target.checked)} />
+                        {language === 'en' ? "Parking" : "Parcheggio"}
+                      </label>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  {language === 'en' 
+                    ? "As a collaborator, you can only modify the title and description of this event." 
+                    : "Come collaboratore, puoi modificare solo il titolo e la descrizione di questo evento."}
+                </p>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)} style={{ flex: 1 }}>
+                  {t('cancel')}
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                  {language === 'en' ? "Save" : "Salva"}
+                </button>
+              </div>
+
+              {/* Only full owners can delete event */}
+              {user && event.organizerId === user.id && (
+                <button 
+                  type="button" 
+                  onClick={handleDeleteEvent}
+                  className="btn btn-danger"
+                  style={{ width: '100%', marginTop: '10px', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', boxShadow: 'none' }}
+                >
+                  🗑️ {language === 'en' ? "Delete Event" : "Elimina Evento Definitivamente"}
+                </button>
+              )}
+            </form>
           </div>
         </div>
       )}

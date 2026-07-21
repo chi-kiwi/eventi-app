@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Eye, Heart, Check, Users, MapPin, Calendar, Award, UserPlus, Shield, Sparkles, MessageSquare, Plus, AlertCircle } from 'lucide-react';
-import { db } from '../services/db';
+import React, { useState, useEffect } from 'react';
+import { Eye, Heart, Check, Users, MapPin, Calendar, Award, UserPlus, Shield, Sparkles, MessageSquare, Plus, AlertCircle, Trash2 } from 'lucide-react';
+import { db, getDistance } from '../services/db';
 
 export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   const [dashTab, setDashTab] = useState('stats'); // stats / create / collaborators
@@ -38,15 +38,79 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   const [colError, setColError] = useState('');
   const [colSuccess, setColSuccess] = useState('');
 
-  // Premium Activation State
-  const [premiumSuccess, setPremiumSuccess] = useState('');
-
   // Event Updates (published by organizer/collaborator)
   const [newUpdateText, setNewUpdateText] = useState('');
   const [updateSuccess, setUpdateSuccess] = useState('');
 
+  // Refresh counter to trigger re-renders
+  const [refreshCounter, setRefreshCounter] = useState(0);
+
+  // Load event draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem('evt_event_draft');
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.title) setNewTitle(parsed.title);
+        if (parsed.desc) setNewDesc(parsed.desc);
+        if (parsed.date) setNewDate(parsed.date);
+        if (parsed.time) setNewTime(parsed.time);
+        if (parsed.location) setNewLocation(parsed.location);
+        if (parsed.lat) setNewLat(parsed.lat);
+        if (parsed.lng) setNewLng(parsed.lng);
+        if (parsed.category) setNewCategory(parsed.category);
+        if (parsed.cost) setNewCost(parsed.cost);
+        if (parsed.maxCapacity) setNewMaxCapacity(parsed.maxCapacity);
+        if (parsed.ticketUrl) setNewTicketUrl(parsed.ticketUrl);
+        if (parsed.poster) setNewPoster(parsed.poster);
+        if (parsed.accessibili !== undefined) setNewAccessibili(parsed.accessibili);
+        if (parsed.animali !== undefined) setNewAnimali(parsed.animali);
+        if (parsed.parcheggio !== undefined) setNewParcheggio(parsed.parcheggio);
+      } catch (e) {
+        console.error("Error loading event draft:", e);
+      }
+    }
+  }, []);
+
+  // Save event draft when fields change
+  useEffect(() => {
+    const draft = {
+      title: newTitle,
+      desc: newDesc,
+      date: newDate,
+      time: newTime,
+      location: newLocation,
+      lat: newLat,
+      lng: newLng,
+      category: newCategory,
+      cost: newCost,
+      maxCapacity: newMaxCapacity,
+      ticketUrl: newTicketUrl,
+      poster: newPoster,
+      accessibili: newAccessibili,
+      animali: newAnimali,
+      parcheggio: newParcheggio
+    };
+    localStorage.setItem('evt_event_draft', JSON.stringify(draft));
+  }, [newTitle, newDesc, newDate, newTime, newLocation, newLat, newLng, newCategory, newCost, newMaxCapacity, newTicketUrl, newPoster, newAccessibili, newAnimali, newParcheggio]);
+
   const users = db.getUsers();
   const myCollaborators = users.filter(u => u.role === 'collaboratore' && u.invitedBy === user.id);
+
+  // Dynamic Geocoding from Address using Nominatim
+  const handleGeocode = async (address) => {
+    if (!address || address.trim().length < 3) return;
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        setNewLat(parseFloat(data[0].lat).toFixed(4));
+        setNewLng(parseFloat(data[0].lon).toFixed(4));
+      }
+    } catch (e) {
+      console.error("Geocoding failed:", e);
+    }
+  };
 
   // Handle Event Creation
   const handleCreateEvent = (e) => {
@@ -77,7 +141,19 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       gallery: []
     };
 
-    // Proximity conflict pre-creation warning confirmation
+    // 1. Proximity alert: check if there's already any event within 30 km on the same day
+    const sameDayEvents = events.filter(evt => evt.date === newDate);
+    const nearbyConflict = sameDayEvents.find(evt => {
+      const dist = getDistance(parseFloat(newLat), parseFloat(newLng), evt.gps.lat, evt.gps.lng);
+      return dist <= 30;
+    });
+
+    if (nearbyConflict) {
+      const dist = getDistance(parseFloat(newLat), parseFloat(newLng), nearbyConflict.gps.lat, nearbyConflict.gps.lng).toFixed(1);
+      alert(`Attenzione: c'è già un altro evento programmato per questa data entro 30 km di distanza!\n\nEvento: "${nearbyConflict.title}" a ${nearbyConflict.location} (${dist} km di distanza)`);
+    }
+
+    // 2. Original proximity check collision (20km warning popup)
     const collision = db.checkCollision(eventData);
     if (collision) {
       const radius = newCategory === 'Feste nei locali' ? 5 : 20;
@@ -98,6 +174,10 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       if (res.warning) {
         setFormWarning(res.warning);
       }
+      
+      // Clear draft since it is saved
+      localStorage.removeItem('evt_event_draft');
+
       onRefreshEvents();
 
       // Reset fields
@@ -106,6 +186,9 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       setNewDate('');
       setNewTime('');
       setNewLocation('');
+      setNewLat('45.4642');
+      setNewLng('9.1900');
+      setNewPoster('https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600');
     }
   };
 
@@ -142,17 +225,22 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       setColEmail('');
       setColPhone('');
       setColPass('');
+      setRefreshCounter(prev => prev + 1);
     } else {
       setColError(res.message);
     }
   };
 
-  // Simulate Premium Activation
-  const handleBuyPremium = () => {
-    const res = db.activatePremium(user.id);
+  // Remove Collaborator
+  const handleRemoveCollaborator = (colId) => {
+    const proceed = window.confirm("Sei sicuro di voler rimuovere questo collaboratore?");
+    if (!proceed) return;
+
+    const res = db.removeCollaborator(colId, user.id);
     if (res.success) {
-      setPremiumSuccess("Certificazione attivata con successo! Spunta Blu sbloccata.");
-      user.premium = true;
+      setRefreshCounter(prev => prev + 1);
+    } else {
+      alert(res.message);
     }
   };
 
@@ -203,11 +291,6 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h2 style={{ fontSize: '20px' }}>Cruscotto Organizzatore</h2>
-        {user.premium && (
-          <span className="badge-pill badge-premium" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Sparkles size={12} /> Spunta Blu Attiva
-          </span>
-        )}
       </div>
 
       {/* Dashboard Sub Tabs */}
@@ -416,7 +499,9 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
               placeholder="es. Milano, Piazza Duomo" 
               value={newLocation}
               onChange={(e) => setNewLocation(e.target.value)}
+              onBlur={(e) => handleGeocode(e.target.value)}
             />
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Digitando la città/via, le coordinate GPS qui sotto verranno rilevate in automatico!</span>
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -495,12 +580,73 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Link Locandina (URL)</label>
+            <label className="form-label">LOCANDINA EVENTO (CARICA O DRAG & DROP)</label>
+            {newPoster && !newPoster.startsWith('http') && newPoster.trim() !== '' ? (
+              <div style={{ position: 'relative', width: '100%', height: '140px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-glass)', marginBottom: '10px' }}>
+                <img src={newPoster} alt="Locandina" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button 
+                  type="button" 
+                  onClick={() => setNewPoster('')}
+                  style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(239, 68, 110, 0.9)', border: 'none', color: 'white', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div 
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => setNewPoster(evt.target.result);
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                onClick={() => document.getElementById('poster-file-input').click()}
+                style={{ 
+                  border: '2px dashed var(--border-glass)', 
+                  borderRadius: '8px', 
+                  padding: '24px', 
+                  textAlign: 'center', 
+                  cursor: 'pointer', 
+                  background: 'var(--bg-secondary)', 
+                  transition: 'border-color 0.2s',
+                  marginBottom: '10px'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-glass)'}
+              >
+                <input 
+                  type="file" 
+                  id="poster-file-input" 
+                  accept="image/*" 
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (evt) => setNewPoster(evt.target.result);
+                      reader.readAsDataURL(file);
+                    }
+                  }} 
+                  style={{ display: 'none' }} 
+                />
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  📁 Trascina qui l'immagine o <strong style={{ color: 'var(--accent-primary)' }}>clicca per caricare</strong>
+                </p>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Supporta PNG, JPG, JPEG</span>
+              </div>
+            )}
+            
+            {/* Fallback text input to allow external links too if they want */}
             <input 
               type="text" 
               className="form-input" 
+              placeholder="O inserisci un link URL esterno..." 
               value={newPoster}
               onChange={(e) => setNewPoster(e.target.value)}
+              style={{ fontSize: '12px' }}
             />
           </div>
 
@@ -541,29 +687,6 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       {dashTab === 'collaborators' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          {/* Spunta Blu Certification Card (Free) */}
-          <div className="glass-panel" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)', border: '1px solid var(--border-glow)' }}>
-            <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-              <Sparkles size={20} color="#60a5fa" /> Badge Organizzatore Certificato
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-              Diventa un Organizzatore Certificato. Questo metterà in evidenza i tuoi eventi in cima alla home page per far sapere ai partecipanti che l'evento è verificato. L'attivazione è gratuita per tutti gli organizzatori!
-            </p>
-
-            {user.premium ? (
-              <div style={{ marginTop: '16px', color: 'var(--accent-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Check size={18} /> Certificazione Attiva (Spunta Blu visibile sul tuo profilo ed eventi!)
-              </div>
-            ) : (
-              <div style={{ marginTop: '16px' }}>
-                {premiumSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '13px', marginBottom: '10px' }}>{premiumSuccess}</p>}
-                <button type="button" className="btn btn-primary" onClick={handleBuyPremium}>
-                  Attiva Certificazione Gratuita
-                </button>
-              </div>
-            )}
-          </div>
-
           {/* Invite Collaborator Section */}
           <div className="glass-panel" style={{ padding: '20px' }}>
             <h3 style={{ fontSize: '16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -609,9 +732,39 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
             </h3>
             {myCollaborators.length > 0 ? (
               myCollaborators.map(c => (
-                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', margin: '8px 0' }}>
-                  <span>💼 {c.name} {c.cognome} ({c.email})</span>
-                  <span style={{ color: 'var(--accent-primary)', fontSize: '11px', fontWeight: 'bold' }}>Attivo</span>
+                <div 
+                  key={c.id} 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    fontSize: '13px', 
+                    margin: '8px 0', 
+                    borderBottom: '1px solid var(--border-glass)', 
+                    paddingBottom: '8px' 
+                  }}
+                >
+                  <span style={{ fontWeight: '500' }}>💼 {c.name} {c.cognome} ({c.email})</span>
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveCollaborator(c.id)}
+                    className="btn btn-danger"
+                    style={{ 
+                      padding: '4px 8px', 
+                      fontSize: '11px', 
+                      boxShadow: 'none', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      background: 'rgba(244, 63, 94, 0.15)',
+                      color: 'var(--accent-pink)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <Trash2 size={13} /> Rimozione
+                  </button>
                 </div>
               ))
             ) : (

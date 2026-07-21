@@ -818,6 +818,18 @@ class LocalDB {
     return { success: true, collaborator: newCollaborator };
   }
 
+  // Remove Collaborator
+  removeCollaborator(collaboratorId, organizerId) {
+    const users = this.getUsers();
+    const index = users.findIndex(u => u.id === collaboratorId && u.role === "collaboratore" && u.invitedBy === organizerId);
+    if (index === -1) {
+      return { success: false, message: "Collaboratore non trovato o autorizzazione negata." };
+    }
+    users.splice(index, 1);
+    this.saveUsers(users);
+    return { success: true };
+  }
+
   // Spunta Blu subscription activation
   activatePremium(userId) {
     const users = this.getUsers();

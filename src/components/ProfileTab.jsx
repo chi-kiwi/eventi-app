@@ -57,7 +57,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 99, 
       badge: "🥉",
       status: language === 'en' ? "Community Novice" : "Novizio della Community",
-      gif: "https://i.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif"
+      gif: "https://i.giphy.com/3ornk57KwDXf81rjWM.gif"
     },
     { 
       name: language === 'en' ? "Silver League 🥈" : "Lega Argento 🥈", 
@@ -65,7 +65,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 249, 
       badge: "🥈",
       status: language === 'en' ? "Active Explorer" : "Esploratore Attivo",
-      gif: "https://i.giphy.com/media/l0amJzR3yZyxAkDVS/giphy.gif"
+      gif: "https://i.giphy.com/l0amJzR3yZyxAkDVS.gif"
     },
     { 
       name: language === 'en' ? "Gold League 🥇" : "Lega Oro 🥇", 
@@ -73,7 +73,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 499, 
       badge: "🥇",
       status: language === 'en' ? "Expert Participant" : "Partecipante Esperto",
-      gif: "https://i.giphy.com/media/kyLYJR7ql3Go0/giphy.gif"
+      gif: "https://i.giphy.com/kyLYJR7ql3Go0.gif"
     },
     { 
       name: language === 'en' ? "Platinum League 💎" : "Lega Platino 💎", 
@@ -81,7 +81,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 999, 
       badge: "💎",
       status: language === 'en' ? "Community Leader" : "Leader della Community",
-      gif: "https://i.giphy.com/media/g9582DNuQppazjLH33/giphy.gif"
+      gif: "https://i.giphy.com/g9582DNuQppazjLH33.gif"
     },
     { 
       name: language === 'en' ? "Diamond League 🏆" : "Lega Diamante 🏆", 
@@ -89,7 +89,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: Infinity, 
       badge: "🏆",
       status: language === 'en' ? "Event Legend" : "Leggenda degli Eventi",
-      gif: "https://i.giphy.com/media/3oz8xAFtqo0LGR2TgK/giphy.gif"
+      gif: "https://i.giphy.com/3oz8xAFtqo0LGR2TgK.gif"
     }
   ];
 

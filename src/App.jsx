@@ -241,15 +241,15 @@ export default function App() {
 
         // Set the celebration meme state
         const memeMap = {
-          "Lega Diamante 🏆": "https://i.giphy.com/media/3oz8xAFtqo0LGR2TgK/giphy.gif",
-          "Lega Platino 💎": "https://i.giphy.com/media/g9582DNuQppazjLH33/giphy.gif",
-          "Lega Oro 🥇": "https://i.giphy.com/media/kyLYJR7ql3Go0/giphy.gif",
-          "Lega Argento 🥈": "https://i.giphy.com/media/l0amJzR3yZyxAkDVS/giphy.gif",
-          "Lega Bronzo 🥉": "https://i.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif"
+          "Lega Diamante 🏆": "https://i.giphy.com/3oz8xAFtqo0LGR2TgK.gif",
+          "Lega Platino 💎": "https://i.giphy.com/g9582DNuQppazjLH33.gif",
+          "Lega Oro 🥇": "https://i.giphy.com/kyLYJR7ql3Go0.gif",
+          "Lega Argento 🥈": "https://i.giphy.com/l0amJzR3yZyxAkDVS.gif",
+          "Lega Bronzo 🥉": "https://i.giphy.com/3ornk57KwDXf81rjWM.gif"
         };
         setLeagueMemeCelebration({
           name: newLeague,
-          gif: memeMap[newLeague] || "https://i.giphy.com/media/l0amJzR3yZyxAkDVS/giphy.gif"
+          gif: memeMap[newLeague] || "https://i.giphy.com/l0amJzR3yZyxAkDVS.gif"
         });
       }
 
@@ -377,7 +377,6 @@ export default function App() {
             onToggleTheme={toggleTheme}
           />
 
-          {/* Details Overlay View */}
           {selectedEvent ? (
             <EventDetails 
               event={selectedEvent} 
@@ -386,6 +385,7 @@ export default function App() {
               onToggleParticipation={handleToggleParticipation}
               onStartChat={handleStartChat}
               onProfileUpdated={setCurrentUser}
+              onRefreshEvents={handleRefreshEvents}
             />
           ) : (
             <>
