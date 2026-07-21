@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Compass, MapPin, Compass as GpsIcon, AlertTriangle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Compass, MapPin } from 'lucide-react';
 import { db, getDistance } from '../services/db';
 import { useLanguage } from '../services/i18n.jsx';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const LOCATIONS = {
   "Milano": { lat: 45.4642, lng: 9.1900 },
@@ -18,9 +20,14 @@ export default function MapTab({ events, onSelectEvent, user }) {
   const [userCoords, setUserCoords] = useState(LOCATIONS["Milano"]);
   const [radiusFilter, setRadiusFilter] = useState(50); // 10, 25, 50, 100 km
   const [weekendOnly, setWeekendOnly] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
   const [onRoadNotification, setOnRoadNotification] = useState(null);
 
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const markersGroupRef = useRef(null);
+  const radiusCircleRef = useRef(null);
+
+  // Initialize user position from profile
   useEffect(() => {
     if (user && user.comune && LOCATIONS[user.comune]) {
       setUserLocationName(user.comune);
@@ -28,17 +35,139 @@ export default function MapTab({ events, onSelectEvent, user }) {
     }
   }, [user]);
 
-  // Trigger On-the-road notification when user moves to a new location
+  // Leaflet map initialization
+  useEffect(() => {
+    if (mapRef.current && !mapInstance.current) {
+      // Create map instance
+      mapInstance.current = L.map(mapRef.current, {
+        zoomControl: true,
+        scrollWheelZoom: true
+      }).setView([userCoords.lat, userCoords.lng], 10);
+
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(mapInstance.current);
+
+      // Layer groups for markers and accuracy circle
+      markersGroupRef.current = L.layerGroup().addTo(mapInstance.current);
+    }
+
+    return () => {
+      // Destroy map instance on unmount
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
+  }, []);
+
+  // Update map viewport and markers when state dependencies change
+  useEffect(() => {
+    if (mapInstance.current) {
+      // Pan/Zoom map to current coordinates
+      mapInstance.current.setView([userCoords.lat, userCoords.lng], mapInstance.current.getZoom());
+
+      // Clear old layers
+      if (markersGroupRef.current) {
+        markersGroupRef.current.clearLayers();
+      }
+      if (radiusCircleRef.current) {
+        mapInstance.current.removeLayer(radiusCircleRef.current);
+      }
+
+      // Add new radius indicator circle
+      radiusCircleRef.current = L.circle([userCoords.lat, userCoords.lng], {
+        radius: radiusFilter * 1000, // convert km to meters
+        color: '#3b82f6',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.08,
+        weight: 1.5,
+        dashArray: '5, 5'
+      }).addTo(mapInstance.current);
+
+      // 1. User Position Marker
+      const userMarkerHtml = `<div style="background-color: #3b82f6; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(59,130,246,0.6); display: flex; align-items: center; justify-content: center; font-size: 11px;">👤</div>`;
+      const userIcon = L.divIcon({
+        html: userMarkerHtml,
+        className: 'custom-leaflet-user-marker',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+
+      L.marker([userCoords.lat, userCoords.lng], { icon: userIcon })
+        .addTo(markersGroupRef.current)
+        .bindPopup(`<strong>${language === 'en' ? "Your position" : "La tua posizione"}</strong>`);
+
+      // 2. Event Markers
+      filteredEvents.forEach(evt => {
+        if (evt.gps) {
+          const color = getMarkerColor(evt.date);
+          const emoji = evt.category === 'Street food' ? '🍔' : 
+                        evt.category === 'Musica' ? '🎸' : 
+                        evt.category === 'Feste di paese' ? '🍲' : 
+                        evt.category === 'Feste nei locali' ? '🎉' : 
+                        evt.category === 'Escursioni' ? '🥾' : '🎫';
+                        
+          const eventMarkerHtml = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;">
+              <div style="background-color: ${color}; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 6px rgba(0,0,0,0.3); border: 2px solid white; transition: all 0.2s;">
+                <span style="font-size: 14px;">${emoji}</span>
+              </div>
+              <div style="width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid ${color}; margin-top: -1px;"></div>
+            </div>
+          `;
+
+          const eventIcon = L.divIcon({
+            html: eventMarkerHtml,
+            className: 'custom-leaflet-event-marker',
+            iconSize: [28, 34],
+            iconAnchor: [14, 34],
+            popupAnchor: [0, -30]
+          });
+
+          // Create Popup Container Element programmatically to prevent React scoping issues
+          const popupDiv = document.createElement('div');
+          popupDiv.style.textAlign = 'center';
+          popupDiv.style.minWidth = '130px';
+          popupDiv.innerHTML = `
+            <div style="font-family: inherit; font-size: 12px; margin: 4px 0;">
+              <strong style="color: #0b0f19; font-size: 13px;">${evt.title}</strong>
+              <p style="margin: 4px 0; color: #4b5563;">${evt.location}</p>
+              <button id="btn-popup-${evt.id}" style="background: linear-gradient(135deg, #ff385c 0%, #e11d48 50%, #f97316 100%); border: none; color: white; padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; width: 100%; transition: transform 0.2s;">
+                ${t('explore')}
+              </button>
+            </div>
+          `;
+
+          const marker = L.marker([evt.gps.lat, evt.gps.lng], { icon: eventIcon })
+            .addTo(markersGroupRef.current);
+            
+          marker.bindPopup(popupDiv);
+
+          // Hook popup open to bind button click handler
+          marker.on('popupopen', () => {
+            const btn = document.getElementById(`btn-popup-${evt.id}`);
+            if (btn) {
+              btn.onclick = () => {
+                onSelectEvent(evt);
+              };
+            }
+          });
+        }
+      });
+    }
+  }, [userCoords, radiusFilter, weekendOnly, events, language]);
+
   const handleLocationChange = (name) => {
     setUserLocationName(name);
     const coords = LOCATIONS[name];
     setUserCoords(coords);
 
-    // Calculate events near this new location to trigger realistic notification
     const nearbyEvents = events.filter(e => {
       if (!e.gps) return false;
       const dist = getDistance(coords.lat, coords.lng, e.gps.lat, e.gps.lng);
-      return dist <= 20; // within 20km
+      return dist <= 20;
     });
 
     if (nearbyEvents.length > 0) {
@@ -47,7 +176,6 @@ export default function MapTab({ events, onSelectEvent, user }) {
         count: nearbyEvents.length,
         category: nearbyEvents[0].category
       });
-      // Auto dismiss after 6 seconds
       setTimeout(() => {
         setOnRoadNotification(null);
       }, 6000);
@@ -91,10 +219,9 @@ export default function MapTab({ events, onSelectEvent, user }) {
     }
   };
 
-  // Helper to check if date falls in "Questo Weekend" (Friday, Saturday, Sunday)
   const isThisWeekend = (dateStr) => {
     const d = new Date(dateStr);
-    const day = d.getDay(); // 0 is Sunday, 5 is Friday, 6 is Saturday
+    const day = d.getDay();
     return day === 0 || day === 5 || day === 6;
   };
 
@@ -111,81 +238,29 @@ export default function MapTab({ events, onSelectEvent, user }) {
     return c;
   };
 
-  // Filter events based on GPS radius and weekend filter
   const filteredEvents = events.filter(e => {
-    // Distance check
+    if (!e.gps) return false;
     const dist = getDistance(userCoords.lat, userCoords.lng, e.gps.lat, e.gps.lng);
     if (dist > radiusFilter) return false;
-
-    // Weekend check
     if (weekendOnly && !isThisWeekend(e.date)) return false;
-
     return true;
   });
 
-  // Color coding calculation based on event date
   const getMarkerColor = (dateStr) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const eventDate = new Date(dateStr);
     const today = new Date(todayStr);
     
     if (dateStr === todayStr) {
-      return 'var(--accent-pink)'; // Red for today
+      return '#f43f5e'; // Red
     }
-    
-    // Check if event is within next 7 days
     const diffTime = eventDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
     if (diffDays > 0 && diffDays <= 7) {
-      return 'var(--accent-orange)'; // Orange for this week
+      return '#f97316'; // Orange
     }
-    
-    return 'var(--accent-green)'; // Green for this month
+    return '#10b981'; // Green
   };
-
-  // Map projection calculations: map lat/lng coordinates to standard SVG coordinates
-  // DYNAMIC projection calculation:
-  let minLat = 45.3;
-  let maxLat = 46.4;
-  let minLng = 8.5;
-  let maxLng = 9.8;
-
-  const coordsList = [
-    { lat: userCoords.lat, lng: userCoords.lng },
-    ...events.filter(e => e.gps).map(e => ({ lat: e.gps.lat, lng: e.gps.lng }))
-  ];
-
-  if (coordsList.length > 1) {
-    const lats = coordsList.map(c => c.lat);
-    const lngs = coordsList.map(c => c.lng);
-    const rawMinLat = Math.min(...lats);
-    const rawMaxLat = Math.max(...lats);
-    const rawMinLng = Math.min(...lngs);
-    const rawMaxLng = Math.max(...lngs);
-
-    const latSpan = rawMaxLat - rawMinLat;
-    const lngSpan = rawMaxLng - rawMinLng;
-
-    // Add padding (e.g. 15% of the span, minimum 0.1 to avoid zero division)
-    const latPadding = Math.max(latSpan * 0.15, 0.05);
-    const lngPadding = Math.max(lngSpan * 0.15, 0.05);
-
-    minLat = rawMinLat - latPadding;
-    maxLat = rawMaxLat + latPadding;
-    minLng = rawMinLng - lngPadding;
-    maxLng = rawMaxLng + lngPadding;
-  }
-
-  const projectCoords = (lat, lng) => {
-    // Map to 100% SVG viewport
-    const x = ((lng - minLng) / (maxLng - minLng)) * 100;
-    // Y is inverted in SVG (high lat is top, so subtract from maxLat)
-    const y = ((maxLat - lat) / (maxLat - minLat)) * 100;
-    return { x: `${x}%`, y: `${y}%` };
-  };
-
-  const userSvgPos = projectCoords(userCoords.lat, userCoords.lng);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -273,187 +348,24 @@ export default function MapTab({ events, onSelectEvent, user }) {
       </div>
 
       {/* Map Board */}
-      <div className="map-canvas-container">
-        {/* SVG Grid Overlay */}
-        <svg style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-          <defs>
-            <radialGradient id="userGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-
-          {/* Grid lines */}
-          <line x1="0" y1="25%" x2="100%" y2="25%" stroke="rgba(255,255,255,0.03)" />
-          <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(255,255,255,0.03)" />
-          <line x1="0" y1="75%" x2="100%" y2="75%" stroke="rgba(255,255,255,0.03)" />
-          <line x1="25%" y1="0" x2="25%" y2="100%" stroke="rgba(255,255,255,0.03)" />
-          <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(255,255,255,0.03)" />
-          <line x1="75%" y1="0" x2="75%" y2="100%" stroke="rgba(255,255,255,0.03)" />
-
-          {/* Simple connections / roads representation */}
-          <path d="M 10,80 Q 30,65 50,60 T 90,40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
-          <path d="M 50,20 C 60,40 50,60 50,85" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" />
-
-          {/* Radius Overlay around User */}
-          <circle 
-            cx={userSvgPos.x} 
-            cy={userSvgPos.y} 
-            r={`${(radiusFilter / 120) * 100}%`} 
-            fill="url(#userGlow)" 
-            stroke="rgba(59, 130, 246, 0.25)" 
-            strokeWidth="1" 
-            strokeDasharray="4,4"
-          />
-
-          {/* Current location name labels */}
-          {Object.entries(LOCATIONS).map(([name, coords]) => {
-            const pos = projectCoords(coords.lat, coords.lng);
-            return (
-              <text
-                key={name}
-                x={pos.x}
-                y={pos.y}
-                dy="-12"
-                textAnchor="middle"
-                fill="var(--text-muted)"
-                fontSize="10"
-                fontWeight="500"
-              >
-                {name}
-              </text>
-            );
-          })}
-        </svg>
-
-        {/* User Marker */}
-        <div 
-          style={{ 
-            position: 'absolute', 
-            left: userSvgPos.x, 
-            top: userSvgPos.y, 
-            transform: 'translate(-50%, -50%)', 
-            zIndex: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}
-        >
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#3b82f6', border: '2px solid white', boxShadow: '0 0 10px #3b82f6', animation: 'fadeIn 1s infinite alternate' }} />
-          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#60a5fa', background: 'rgba(15,20,36,0.8)', padding: '1px 4px', borderRadius: '4px', marginTop: '2px', border: '1px solid rgba(96,165,250,0.2)' }}>
-            {language === 'en' ? "You" : "Tu"}
-          </span>
-        </div>
-
-        {/* Event Markers */}
-        {filteredEvents.map(evt => {
-          const pos = projectCoords(evt.gps.lat, evt.gps.lng);
-          const color = getMarkerColor(evt.date);
-          const isSelected = selectedEvent?.id === evt.id;
-          
-          return (
-            <button
-              key={evt.id}
-              onClick={() => setSelectedEvent(evt)}
-              style={{
-                position: 'absolute',
-                left: pos.x,
-                top: pos.y,
-                transform: 'translate(-50%, -100%)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                zIndex: isSelected ? 12 : 5,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                transition: 'transform 0.2s'
-              }}
-            >
-              <div 
-                style={{ 
-                  backgroundColor: color, 
-                  color: 'white', 
-                  borderRadius: '50%', 
-                  width: isSelected ? '34px' : '26px', 
-                  height: isSelected ? '34px' : '26px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  boxShadow: isSelected ? `0 0 15px ${color}` : 'var(--shadow-sm)',
-                  border: isSelected ? '2px solid white' : '1px solid rgba(255,255,255,0.2)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <span style={{ fontSize: isSelected ? '16px' : '12px', margin: 'auto' }}>
-                  {evt.category === 'Street food' ? '🍔' : 
-                   evt.category === 'Musica' ? '🎸' : 
-                   evt.category === 'Feste di paese' ? '🍲' : 
-                   evt.category === 'Feste nei locali' ? '🎉' : 
-                   evt.category === 'Escursioni' ? '🥾' : '🎫'}
-                </span>
-              </div>
-              <div style={{ width: '0', height: '0', borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `6px solid ${color}` }} />
-            </button>
-          );
-        })}
-      </div>
+      <div ref={mapRef} className="map-canvas-container" style={{ border: '1px solid var(--border-glass)', height: '380px' }}></div>
 
       {/* Legend */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', fontSize: '12px', color: 'var(--text-secondary)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--accent-pink)' }} />
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f43f5e' }} />
           <span>{language === 'en' ? "Today" : "Oggi"}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--accent-orange)' }} />
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f97316' }} />
           <span>{language === 'en' ? "This week" : "Questa settimana"}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--accent-green)' }} />
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981' }} />
           <span>{language === 'en' ? "This month" : "Questo mese"}</span>
         </div>
       </div>
 
-      {/* Selected Event Mini Card */}
-      {selectedEvent ? (
-        <div className="glass-card animate-slide-in" style={{ padding: '12px', position: 'relative', display: 'flex', gap: '12px' }}>
-          {selectedEvent.poster && (
-            <img 
-              src={selectedEvent.poster} 
-              alt={selectedEvent.title} 
-              style={{ width: '70px', height: '70px', borderRadius: '8px', objectFit: 'cover' }} 
-              onError={(e) => { e.target.onerror = null; e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='90' style='background:linear-gradient(135deg, %234f46e5 0%, %23ec4899 100%)'><text x='50%' y='50%' fill='white' font-size='12' font-family='sans-serif' text-anchor='middle' dy='.3em'>Eventi App</text></svg>"; }}
-            />
-          )}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedEvent.title}</h4>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>📍 {selectedEvent.location}</p>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-              <span className="badge-pill badge-category" style={{ fontSize: '10px', padding: '2px 6px' }}>{getCategoryLabel(selectedEvent.category)}</span>
-              <button 
-                className="btn btn-primary btn-small" 
-                onClick={() => onSelectEvent(selectedEvent)}
-                style={{ width: 'auto', padding: '4px 10px', fontSize: '11px' }}
-              >
-                {language === 'en' ? "Details" : "Dettagli"}
-              </button>
-            </div>
-          </div>
-          <button 
-            onClick={() => setSelectedEvent(null)}
-            style={{ position: 'absolute', top: '4px', right: '8px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' }}
-          >
-            ✕
-          </button>
-        </div>
-      ) : (
-        <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '13px' }}>
-          {language === 'en' ? "Select a marker on the map to view the event" : "Seleziona un marcatore sulla mappa per visualizzare l'evento"}
-        </div>
-      )}
     </div>
   );
 }

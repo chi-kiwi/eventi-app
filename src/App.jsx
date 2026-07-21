@@ -241,15 +241,15 @@ export default function App() {
 
         // Set the celebration meme state
         const memeMap = {
-          "Lega Diamante 🏆": "https://media.giphy.com/media/oF5oQHhA23vdm/giphy.gif",
-          "Lega Platino 💎": "https://media.giphy.com/media/g9582DNuQppazjLH33/giphy.gif",
-          "Lega Oro 🥇": "https://media.giphy.com/media/l3q2XHFQOP6WoWmHm/giphy.gif",
-          "Lega Argento 🥈": "https://media.giphy.com/media/2xO491sY6UtmaDQAyc/giphy.gif",
-          "Lega Bronzo 🥉": "https://media.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif"
+          "Lega Diamante 🏆": "https://i.giphy.com/media/3oz8xAFtqo0LGR2TgK/giphy.gif",
+          "Lega Platino 💎": "https://i.giphy.com/media/g9582DNuQppazjLH33/giphy.gif",
+          "Lega Oro 🥇": "https://i.giphy.com/media/kyLYJR7ql3Go0/giphy.gif",
+          "Lega Argento 🥈": "https://i.giphy.com/media/l0amJzR3yZyxAkDVS/giphy.gif",
+          "Lega Bronzo 🥉": "https://i.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif"
         };
         setLeagueMemeCelebration({
           name: newLeague,
-          gif: memeMap[newLeague] || "https://media.giphy.com/media/2xO491sY6UtmaDQAyc/giphy.gif"
+          gif: memeMap[newLeague] || "https://i.giphy.com/media/l0amJzR3yZyxAkDVS/giphy.gif"
         });
       }
 

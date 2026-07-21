@@ -7,16 +7,16 @@ import { useLanguage } from '../services/i18n.jsx';
 export default function ProfileTab({ user, onProfileUpdated }) {
   const { language, t } = useLanguage();
   // Update fields form state
+  // Update fields form state
   const [comune, setComune] = useState(user?.comune || '');
   const [regione, setRegione] = useState(user?.regione || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [password, setPassword] = useState(user?.password || '');
+  const [password, setPassword] = useState(''); // empty by default for safety
   const [interests, setInterests] = useState(user?.interests || []);
   
-  // Security validation Modal state
-  const [showSecurityModal, setShowSecurityModal] = useState(false);
-  const [securityOtp, setSecurityOtp] = useState('');
+  // Security confirmation password
+  const [currentPasswordConfirm, setCurrentPasswordConfirm] = useState('');
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
@@ -57,7 +57,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 99, 
       badge: "🥉",
       status: language === 'en' ? "Community Novice" : "Novizio della Community",
-      gif: "https://media.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif"
+      gif: "https://i.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif"
     },
     { 
       name: language === 'en' ? "Silver League 🥈" : "Lega Argento 🥈", 
@@ -65,7 +65,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 249, 
       badge: "🥈",
       status: language === 'en' ? "Active Explorer" : "Esploratore Attivo",
-      gif: "https://media.giphy.com/media/2xO491sY6UtmaDQAyc/giphy.gif"
+      gif: "https://i.giphy.com/media/l0amJzR3yZyxAkDVS/giphy.gif"
     },
     { 
       name: language === 'en' ? "Gold League 🥇" : "Lega Oro 🥇", 
@@ -73,7 +73,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 499, 
       badge: "🥇",
       status: language === 'en' ? "Expert Participant" : "Partecipante Esperto",
-      gif: "https://media.giphy.com/media/l3q2XHFQOP6WoWmHm/giphy.gif"
+      gif: "https://i.giphy.com/media/kyLYJR7ql3Go0/giphy.gif"
     },
     { 
       name: language === 'en' ? "Platinum League 💎" : "Lega Platino 💎", 
@@ -81,7 +81,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 999, 
       badge: "💎",
       status: language === 'en' ? "Community Leader" : "Leader della Community",
-      gif: "https://media.giphy.com/media/g9582DNuQppazjLH33/giphy.gif"
+      gif: "https://i.giphy.com/media/g9582DNuQppazjLH33/giphy.gif"
     },
     { 
       name: language === 'en' ? "Diamond League 🏆" : "Lega Diamante 🏆", 
@@ -89,7 +89,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: Infinity, 
       badge: "🏆",
       status: language === 'en' ? "Event Legend" : "Leggenda degli Eventi",
-      gif: "https://media.giphy.com/media/oF5oQHhA23vdm/giphy.gif"
+      gif: "https://i.giphy.com/media/3oz8xAFtqo0LGR2TgK/giphy.gif"
     }
   ];
 
@@ -119,26 +119,13 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     setProfileError('');
     setProfileSuccess('');
     
-    if (!comune || !regione || !phone || !email || !password) {
+    if (!comune || !regione || !phone || !email) {
       setProfileError("Compila tutti i campi obbligatori.");
       return;
     }
 
-    // Close form modal, open security OTP modal
-    setShowEditProfileModal(false);
-    setShowSecurityModal(true);
-    setSecurityOtp('');
-  };
-
-  const handleSecurityConfirm = (e) => {
-    e.preventDefault();
-    setProfileError('');
-    setProfileSuccess('');
-
-    if (securityOtp !== '1234') {
-      setProfileError("Codice OTP errato. Inserisci '1234' per simulare la conferma.");
-      setShowSecurityModal(false);
-      setShowEditProfileModal(true); // Reopen form modal
+    if (!currentPasswordConfirm) {
+      setProfileError(language === 'en' ? "Enter your current password to authorize updates." : "Inserisci la tua password attuale per autorizzare le modifiche.");
       return;
     }
 
@@ -146,24 +133,29 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       comune,
       regione,
       phone,
-      email,
-      password,
       interests
     };
 
-    const res = db.updateProfile(user.id, updatedFields, user.password);
+    // If user filled in a new password, we include it
+    if (password.trim() !== '') {
+      updatedFields.password = password;
+    }
+
+    // Call update with currentPasswordConfirm to verify
+    const res = db.updateProfile(user.id, updatedFields, currentPasswordConfirm);
     if (res.success) {
-      setProfileSuccess("Profilo e credenziali aggiornati con successo!");
-      setShowSecurityModal(false);
+      setProfileSuccess(language === 'en' ? "Profile updated successfully!" : "Profilo aggiornato con successo!");
+      setShowEditProfileModal(false);
+      setCurrentPasswordConfirm('');
+      setPassword('');
       onProfileUpdated(res.user);
     } else {
       setProfileError(res.message);
-      setShowSecurityModal(false);
-      setShowEditProfileModal(true); // Reopen form modal
     }
   };
 
   const handleSelectAvatarPreset = (url) => {
+    // Presets updates do not require password validation for simplicity (non-critical fields)
     const res = db.updateProfile(user.id, { avatar: url }, user.password);
     if (res.success) {
       setProfileSuccess("Foto profilo aggiornata!");
@@ -173,6 +165,17 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       setProfileError(res.message);
       setShowAvatarModal(false);
     }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const base64Url = uploadEvent.target.result;
+      handleSelectAvatarPreset(base64Url);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCustomAvatarSubmit = (e) => {
@@ -434,8 +437,9 @@ export default function ProfileTab({ user, onProfileUpdated }) {
             setRegione(user?.regione || '');
             setPhone(user?.phone || '');
             setEmail(user?.email || '');
-            setPassword(user?.password || '');
+            setPassword('');
             setInterests(user?.interests || []);
+            setCurrentPasswordConfirm('');
             setProfileError('');
             setProfileSuccess('');
             setShowEditProfileModal(true);
@@ -525,7 +529,6 @@ export default function ProfileTab({ user, onProfileUpdated }) {
           </div>
         </div>
       )}
-
       {/* MODAL 2: EDIT PROFILE & CREDENTIALS FORM */}
       {showEditProfileModal && (
         <div className="modal-overlay animate-fade-in" style={{ zIndex: 200 }}>
@@ -564,10 +567,13 @@ export default function ProfileTab({ user, onProfileUpdated }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Email</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label">Email</label>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{language === 'en' ? "Email cannot be changed" : "L'email non può essere modificata"}</span>
+                </div>
                 <div style={{ position: 'relative' }}>
                   <Mail size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
-                  <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} style={{ paddingLeft: '40px' }} />
+                  <input type="email" className="form-input" value={email} disabled style={{ paddingLeft: '40px', opacity: 0.6, cursor: 'not-allowed' }} />
                 </div>
               </div>
 
@@ -583,7 +589,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                 <label className="form-label">{language === 'en' ? "New Password" : "Nuova Password"}</label>
                 <div style={{ position: 'relative' }}>
                   <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
-                  <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ paddingLeft: '40px' }} placeholder={language === 'en' ? "Leave empty or enter new" : "Lascia invariata o inserisci nuova"} />
+                  <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ paddingLeft: '40px' }} placeholder={language === 'en' ? "Leave empty to keep current" : "Lascia vuoto per non cambiarla"} />
                 </div>
               </div>
 
@@ -620,12 +626,31 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                 </div>
               </div>
 
+              {/* Secure verification input */}
+              <div className="form-group" style={{ marginTop: '16px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+                <label className="form-label" style={{ color: 'var(--accent-pink)', fontWeight: 'bold' }}>
+                  {language === 'en' ? "Confirm changes with Current Password" : "Conferma modifiche con Password Attuale"}
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="password" 
+                    className="form-input" 
+                    style={{ paddingLeft: '40px', borderColor: 'var(--accent-pink)' }} 
+                    value={currentPasswordConfirm} 
+                    onChange={(e) => setCurrentPasswordConfirm(e.target.value)} 
+                    placeholder="••••••••" 
+                    required
+                  />
+                </div>
+              </div>
+
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowEditProfileModal(false)} style={{ flex: 1 }}>
                   {t('cancel')}
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  {language === 'en' ? "Continue" : "Continua"}
+                  {t('save_changes')}
                 </button>
               </div>
             </form>
@@ -651,8 +676,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
 
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
               {language === 'en' 
-                ? "Choose a beautiful profile photo from our selection or enter a custom URL:" 
-                : "Scegli una splendida foto profilo tra quelle selezionate per te o inserisci un indirizzo URL personalizzato:"}
+                ? "Choose a profile photo from presets or upload yours:" 
+                : "Scegli una foto profilo predefinita o caricane una tua dal dispositivo:"}
             </p>
 
             {/* Avatar presets grid */}
@@ -679,10 +704,28 @@ export default function ProfileTab({ user, onProfileUpdated }) {
               ))}
             </div>
 
+            {/* File Upload Selector */}
+            <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '14px', marginBottom: '14px' }}>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleImageUpload} 
+                style={{ display: 'none' }} 
+                id="avatar-file-input" 
+              />
+              <label 
+                htmlFor="avatar-file-input" 
+                className="btn btn-primary" 
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 auto', maxWidth: '280px' }}
+              >
+                📸 {language === 'en' ? "Take Photo / Choose Image" : "Scatta Foto / Scegli Immagine"}
+              </label>
+            </div>
+
             {/* Custom URL Input Form */}
             <form onSubmit={handleCustomAvatarSubmit} style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '14px' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontSize: '12px' }}>{language === 'en' ? "Use Custom Photo URL" : "Usa URL Foto Personalizzato"}</label>
+                <label className="form-label" style={{ fontSize: '12px' }}>{language === 'en' ? "Or Use Photo URL" : "O usa un URL personalizzato"}</label>
                 <input 
                   type="text" 
                   className="form-input" 
@@ -705,57 +748,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
         </div>
       )}
 
-      {/* SECURITY CONFIRMATION DIALOG MODAL (OTP) */}
-      {showSecurityModal && (
-        <div className="modal-overlay animate-fade-in" style={{ zIndex: 300 }}>
-          <div className="modal-content" style={{ padding: '24px', maxWidth: '400px', width: '90%' }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ background: 'rgba(244, 63, 94, 0.15)', padding: '10px', borderRadius: '50%', color: 'var(--accent-pink)' }}>
-                <ShieldAlert size={24} />
-              </div>
-              <h3 style={{ fontSize: '17px', fontWeight: 'bold' }}>{t('otp_title')}</h3>
-            </div>
-            
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
-              {language === 'en'
-                ? `To update sensitive information, enter the 4-digit OTP code sent to ${user.email}.`
-                : `Per modificare le credenziali o altre informazioni sensibili, inserisci il codice OTP a 4 cifre che abbiamo inviato su ${user.email}.`}
-            </p>
-
-            <form onSubmit={handleSecurityConfirm}>
-              <div className="form-group">
-                <label className="form-label">{language === 'en' ? "Confirmation OTP Code" : "Codice OTP di Conferma"}</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder={language === 'en' ? "Enter 1234" : "Inserisci 1234"} 
-                  value={securityOtp}
-                  onChange={(e) => setSecurityOtp(e.target.value)}
-                  style={{ textAlign: 'center', fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold' }}
-                  autoFocus
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => {
-                    setShowSecurityModal(false);
-                    setShowEditProfileModal(true); // Re-open form modal
-                  }} 
-                  style={{ flex: 1 }}
-                >
-                  {t('cancel')}
-                </button>
-                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                   {t('save_changes')}
-                 </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* OTP modal removed */}
 
       <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
 
