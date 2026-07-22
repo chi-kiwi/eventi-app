@@ -110,22 +110,26 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
     }
     setIsGeoLoading(true);
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(query.trim())}&limit=5`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query.trim())}&limit=6`, {
+        headers: { 'User-Agent': 'EventiApp/1.0 (admin@eventiapp.com)' }
+      });
       const data = await response.json();
-      if (data && data.length > 0) {
+      if (data && Array.isArray(data) && data.length > 0) {
         const formattedList = data.map(item => {
           const addr = item.address || {};
-          const town = addr.city || addr.town || addr.village || addr.municipality || item.display_name.split(',')[0];
+          const town = addr.village || addr.town || addr.city || addr.municipality || addr.suburb || item.display_name.split(',')[0];
           const county = addr.county || addr.province || '';
           const state = addr.state || '';
           
           let provinceCode = '';
-          if (county) {
-            provinceCode = county.replace(/Provincia di /i, '').substring(0, 2).toUpperCase();
+          if (addr['ISO3166-2-lvl6']) {
+            provinceCode = addr['ISO3166-2-lvl6'].replace('IT-', '').toUpperCase();
+          } else if (county) {
+            provinceCode = county.replace(/Provincia di /i, '').trim().substring(0, 2).toUpperCase();
           }
           
           const label = provinceCode ? `${town} (${provinceCode})` : town;
-          const fullSubtitle = [state, 'Italia'].filter(Boolean).join(', ');
+          const fullSubtitle = [state, addr.country || 'Italia'].filter(Boolean).join(', ');
 
           return {
             label,
@@ -157,14 +161,33 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   const handleGeocode = async (address) => {
     if (!address || address.trim().length < 2) return null;
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&q=${encodeURIComponent(address)}&limit=1`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(address)}&limit=1`, {
+        headers: { 'User-Agent': 'EventiApp/1.0 (admin@eventiapp.com)' }
+      });
       const data = await response.json();
-      if (data && data.length > 0) {
-        const latStr = parseFloat(data[0].lat).toFixed(4);
-        const lngStr = parseFloat(data[0].lon).toFixed(4);
+      if (data && Array.isArray(data) && data.length > 0) {
+        const item = data[0];
+        const addr = item.address || {};
+        const town = addr.village || addr.town || addr.city || addr.municipality || item.display_name.split(',')[0];
+        const county = addr.county || addr.province || '';
+        const state = addr.state || '';
+        
+        let provinceCode = '';
+        if (addr['ISO3166-2-lvl6']) {
+          provinceCode = addr['ISO3166-2-lvl6'].replace('IT-', '').toUpperCase();
+        } else if (county) {
+          provinceCode = county.replace(/Provincia di /i, '').trim().substring(0, 2).toUpperCase();
+        }
+
+        const formattedLabel = provinceCode ? `${town} (${provinceCode})` : town;
+        const latStr = parseFloat(item.lat).toFixed(4);
+        const lngStr = parseFloat(item.lon).toFixed(4);
+
+        setNewLocation(formattedLabel);
         setNewLat(latStr);
         setNewLng(lngStr);
-        return { lat: latStr, lng: lngStr };
+        setGeoDetails(`${formattedLabel}, ${state} • GPS: ${latStr}, ${lngStr}`);
+        return { lat: latStr, lng: lngStr, label: formattedLabel };
       }
     } catch (e) {
       console.error("Geocoding failed:", e);
@@ -197,8 +220,8 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       desc: newDesc,
       date: newDate,
       time: newTime,
-      location: newLocation,
-      gps: { lat: parseFloat(newLat), lng: parseFloat(newLng) },
+      location: geoRes?.label || newLocation,
+      gps: { lat: parseFloat(currentLat), lng: parseFloat(currentLng) },
       category: newCategory,
       cost: newCost,
       maxCapacity: parseInt(newMaxCapacity) || 0,
