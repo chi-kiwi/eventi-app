@@ -3,6 +3,7 @@ import { Calendar, MapPin, Heart, Check, Bookmark, ArrowLeft, Shield, Map, Exter
 import { db, getDistance } from '../services/db';
 import { useLanguage } from '../services/i18n.jsx';
 import { fetchLiveWeather } from '../services/weather';
+import { searchItalianComuni } from '../services/comuni';
 
 const PHOTO_PRESETS = [
   { name: "🍔 Street Food", url: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800" },
@@ -72,6 +73,17 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
     setEditError('');
     setEditSuccess('');
   }, [event]);
+
+  const [editGeoSuggestions, setEditGeoSuggestions] = useState([]);
+
+  const handleFetchEditSuggestions = (query) => {
+    if (!query || query.trim().length < 2) {
+      setEditGeoSuggestions([]);
+      return;
+    }
+    const matches = searchItalianComuni(query);
+    setEditGeoSuggestions(matches);
+  };
 
   // Geocoding on edit address
   const handleEditGeocode = async (address) => {
@@ -1165,7 +1177,7 @@ END:VCALENDAR`;
                     </div>
                   </div>
 
-                  <div className="form-group">
+                  <div className="form-group" style={{ position: 'relative' }}>
                     <label className="form-label">{language === 'en' ? "Full Address (Street, Number, Town)" : "Indirizzo Completo dell'Evento (Via, N. Civico, Comune)"}</label>
                     <input 
                       type="text" 
@@ -1174,10 +1186,71 @@ END:VCALENDAR`;
                       value={editLocation} 
                       onChange={(e) => {
                         setEditLocation(e.target.value);
+                        handleFetchEditSuggestions(e.target.value);
                         handleEditGeocode(e.target.value);
                       }} 
-                      onBlur={(e) => handleEditGeocode(e.target.value)}
+                      onFocus={(e) => handleFetchEditSuggestions(e.target.value)}
+                      onBlur={() => setTimeout(() => setEditGeoSuggestions([]), 350)}
                     />
+
+                    {/* Live Autocomplete Dropdown List with Province ("La Tendina") */}
+                    {editGeoSuggestions.length > 0 && (
+                      <div 
+                        className="glass-panel animate-fade-in" 
+                        style={{ 
+                          position: 'absolute', 
+                          top: '100%', 
+                          left: 0, 
+                          right: 0, 
+                          zIndex: 400, 
+                          background: 'var(--bg-secondary)', 
+                          border: '1px solid var(--border-glass)', 
+                          borderRadius: '8px', 
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                          marginTop: '4px',
+                          maxHeight: '200px',
+                          overflowY: 'auto'
+                        }}
+                      >
+                        {editGeoSuggestions.map((item, idx) => (
+                          <div 
+                            key={idx} 
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              let finalLoc = item.label;
+                              if (editLocation && (editLocation.toLowerCase().includes('via') || editLocation.toLowerCase().includes('piazza') || editLocation.toLowerCase().includes('corso') || editLocation.toLowerCase().includes('largo'))) {
+                                const street = editLocation.split(',')[0].trim();
+                                if (!street.toLowerCase().includes(item.town.toLowerCase())) {
+                                  finalLoc = `${street}, ${item.label}`;
+                                } else {
+                                  finalLoc = editLocation.trim();
+                                }
+                              }
+                              setEditLocation(finalLoc);
+                              setEditLat(item.lat);
+                              setEditLng(item.lng);
+                              setEditGeoSuggestions([]);
+                            }}
+                            style={{ 
+                              padding: '10px 14px', 
+                              cursor: 'pointer', 
+                              borderBottom: idx < editGeoSuggestions.length - 1 ? '1px solid var(--border-glass)' : 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              fontSize: '13px'
+                            }}
+                          >
+                            <div>
+                              <strong style={{ color: 'var(--text-primary)', display: 'block' }}>📍 {item.label}</strong>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.fullTitle}</span>
+                            </div>
+                            <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>Seleziona ✓</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div style={{ marginTop: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>📍</span>
                       <span>

@@ -64,18 +64,25 @@ export const COMUNI_ITALIA = [
 ];
 
 /**
- * Cerca comuni italiani corrispondenti alla stringa di ricerca (anche parziale)
+ * Cerca comuni italiani corrispondenti alla stringa di ricerca (anche parziale o con indirizzo via/piazza)
  */
 export function searchItalianComuni(query) {
   if (!query || query.trim().length < 2) return [];
   const cleanQ = query.trim().toLowerCase();
+  const tokens = cleanQ.split(/\s+/).filter(t => t.length >= 2);
 
   // 1. Cerca prima corrispondenze nel database locale italiano
-  const localMatches = COMUNI_ITALIA.filter(c => 
-    c.name.toLowerCase().includes(cleanQ) || 
-    c.prov.toLowerCase() === cleanQ ||
-    `${c.name.toLowerCase()} (${c.prov.toLowerCase()})`.includes(cleanQ)
-  ).map(c => ({
+  const localMatches = COMUNI_ITALIA.filter(c => {
+    const townLower = c.name.toLowerCase();
+    const provLower = c.prov.toLowerCase();
+    
+    // Direct match
+    if (townLower.includes(cleanQ) || cleanQ.includes(townLower)) return true;
+    if (provLower === cleanQ) return true;
+
+    // Token match: check if any token matches the town name or vice versa
+    return tokens.some(token => townLower.includes(token) || (token.length >= 4 && townLower.startsWith(token)));
+  }).map(c => ({
     label: `${c.name} (${c.prov})`,
     fullTitle: `${c.name} (${c.prov}), ${c.region}, Italia`,
     lat: c.lat.toFixed(4),

@@ -670,20 +670,10 @@ class LocalDB {
 
   async syncCloudCommunityMessages() {
     try {
-      const res = await fetch('https://ntfy.sh/eventiapp_community_sync_951087c2/json?poll=1');
+      const res = await fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7adefe142f');
       if (!res.ok) return;
-      const text = await res.text();
-      if (!text.trim()) return;
-      const lines = text.trim().split('\n').filter(Boolean);
-      const cloudMsgs = lines
-        .map(l => {
-          try { return JSON.parse(l); } catch(e) { return null; }
-        })
-        .filter(item => item && item.event === 'message' && item.message)
-        .map(item => {
-          try { return JSON.parse(item.message); } catch(e) { return null; }
-        })
-        .filter(m => m && m.id && m.eventId);
+      const data = await res.json();
+      const cloudMsgs = data?.data?.messages || [];
 
       if (cloudMsgs.length > 0) {
         const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
@@ -707,20 +697,10 @@ class LocalDB {
 
   async syncCloudPrivateMessages() {
     try {
-      const res = await fetch('https://ntfy.sh/eventiapp_private_chat_951087c2/json?poll=1');
+      const res = await fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7b25f91432');
       if (!res.ok) return;
-      const text = await res.text();
-      if (!text.trim()) return;
-      const lines = text.trim().split('\n').filter(Boolean);
-      const cloudMsgs = lines
-        .map(l => {
-          try { return JSON.parse(l); } catch(e) { return null; }
-        })
-        .filter(item => item && item.event === 'message' && item.message)
-        .map(item => {
-          try { return JSON.parse(item.message); } catch(e) { return null; }
-        })
-        .filter(m => m && m.id && m.eventId);
+      const data = await res.json();
+      const cloudMsgs = data?.data?.messages || [];
 
       if (cloudMsgs.length > 0) {
         const local = JSON.parse(localStorage.getItem("evt_messages") || "[]");
@@ -774,10 +754,16 @@ class LocalDB {
 
     // Post to cloud pub/sub for cross-device & cross-browser sync
     try {
-      fetch('https://ntfy.sh/eventiapp_community_sync_951087c2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMessage)
+      fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7adefe142f').then(r => r.json()).then(data => {
+        const existing = data?.data?.messages || [];
+        if (!existing.some(m => m.id === newMessage.id)) {
+          existing.push(newMessage);
+          fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7adefe142f', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'evt_community_sync', data: { messages: existing } })
+          }).catch(() => {});
+        }
       }).catch(() => {});
     } catch(e) {}
 
@@ -944,10 +930,16 @@ class LocalDB {
 
     // Post to cloud pub/sub for cross-device & cross-browser sync
     try {
-      fetch('https://ntfy.sh/eventiapp_private_chat_951087c2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMessage)
+      fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7b25f91432').then(r => r.json()).then(data => {
+        const existing = data?.data?.messages || [];
+        if (!existing.some(m => m.id === newMessage.id)) {
+          existing.push(newMessage);
+          fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7b25f91432', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'evt_private_chat_sync', data: { messages: existing } })
+          }).catch(() => {});
+        }
       }).catch(() => {});
     } catch(e) {}
 

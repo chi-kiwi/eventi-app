@@ -754,10 +754,11 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                 setNewLocation(e.target.value);
                 handleFetchAddressSuggestions(e.target.value);
               }}
-              onBlur={() => setTimeout(() => setGeoSuggestions([]), 250)}
+              onFocus={(e) => handleFetchAddressSuggestions(e.target.value)}
+              onBlur={() => setTimeout(() => setGeoSuggestions([]), 350)}
             />
 
-            {/* Live Autocomplete Dropdown List with Province */}
+            {/* Live Autocomplete Dropdown List with Province ("La Tendina") */}
             {geoSuggestions.length > 0 && (
               <div 
                 className="glass-panel animate-fade-in" 
@@ -766,11 +767,11 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                   top: '100%', 
                   left: 0, 
                   right: 0, 
-                  zIndex: 200, 
+                  zIndex: 300, 
                   background: 'var(--bg-secondary)', 
                   border: '1px solid var(--border-glass)', 
                   borderRadius: '8px', 
-                  boxShadow: 'var(--shadow-md)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
                   marginTop: '4px',
                   maxHeight: '220px',
                   overflowY: 'auto'
@@ -779,6 +780,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                 {geoSuggestions.map((item, idx) => (
                   <div 
                     key={idx} 
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleSelectGeoSuggestion(item)}
                     style={{ 
                       padding: '10px 14px', 
