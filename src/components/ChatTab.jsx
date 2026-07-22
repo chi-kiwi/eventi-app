@@ -10,18 +10,30 @@ export default function ChatTab({ user }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (user) {
-      setConversations(db.getChatsForUser(user.id));
-    }
-  }, [user]);
+    if (!user) return;
 
-  useEffect(() => {
-    if (activeChat) {
-      setMessages(db.getChatMessages(activeChat.eventId, user.id, activeChat.otherUserId));
-      // Scroll to bottom
-      scrollToBottom();
-    }
-  }, [activeChat, conversations]);
+    const loadChatData = () => {
+      setConversations(db.getChatsForUser(user.id));
+      if (activeChat) {
+        setMessages(db.getChatMessages(activeChat.eventId, user.id, activeChat.otherUserId));
+      }
+    };
+
+    loadChatData();
+    const interval = setInterval(loadChatData, 2000);
+
+    const handleStorage = (e) => {
+      if (e.key === 'evt_messages') {
+        loadChatData();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [user, activeChat]);
 
   const scrollToBottom = () => {
     setTimeout(() => {

@@ -170,10 +170,30 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
   };
 
   useEffect(() => {
-    setCommunityMessages(db.getCommunityMessages(event.id));
+    const loadCommunityData = () => {
+      setCommunityMessages(db.getCommunityMessages(event.id));
+    };
+
+    loadCommunityData();
+
+    // Auto-refresh polling every 2 seconds
+    const interval = setInterval(loadCommunityData, 2000);
+
+    const handleStorage = (e) => {
+      if (e.key === 'evt_community_messages') {
+        loadCommunityData();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
     if (event.gps) {
       fetchLiveWeather(event.gps.lat, event.gps.lng).then(data => setLiveWeatherData(data));
     }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [event.id, event.gps]);
 
   const users = db.getUsers();
@@ -230,16 +250,22 @@ END:VCALENDAR`;
     document.body.removeChild(link);
   };
 
-  // Open maps coordinates
+  // Open maps coordinates & full address navigation
   const openDirections = (app) => {
-    const { lat, lng } = event.gps;
+    const fullLoc = event.location || '';
+    const hasGps = event.gps && event.gps.lat && event.gps.lng;
+    const navQuery = fullLoc.trim() ? encodeURIComponent(fullLoc) : (hasGps ? `${event.gps.lat},${event.gps.lng}` : '');
+    const gpsCoords = hasGps ? `${event.gps.lat},${event.gps.lng}` : '';
+
     let url = '';
     if (app === 'google') {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      url = `https://www.google.com/maps/dir/?api=1&destination=${navQuery}`;
     } else if (app === 'apple') {
-      url = `maps://maps.apple.com/?daddr=${lat},${lng}`;
+      url = `maps://maps.apple.com/?daddr=${navQuery}`;
     } else if (app === 'waze') {
-      url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+      url = gpsCoords 
+        ? `https://waze.com/ul?ll=${gpsCoords}&navigate=yes&q=${navQuery}`
+        : `https://waze.com/ul?q=${navQuery}&navigate=yes`;
     }
     window.open(url, '_blank');
     setShowDirectionsMenu(false);
@@ -597,33 +623,60 @@ END:VCALENDAR`;
 
         {/* Utilities Tags */}
         <div className="glass-panel" style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', opacity: event.accessibili ? 1 : 0.4 }}>
-            <span style={{ fontSize: '20px' }}>♿</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '500' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '4px', 
+            padding: '10px 4px',
+            borderRadius: '10px',
+            background: event.accessibili ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            border: event.accessibili ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)'
+          }}>
+            <span style={{ fontSize: '22px' }}>{event.accessibili ? '♿' : '🚫'}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
               {language === 'en' ? "Accessibility" : "Disabili"}
             </span>
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-              {event.accessibili ? (language === 'en' ? 'Accessible' : 'Accessibile') : 'No'}
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: event.accessibili ? 'var(--accent-green)' : '#ef4444' }}>
+              {event.accessibili ? (language === 'en' ? '✅ Accessible' : '✅ Accessibile') : (language === 'en' ? '❌ No Access' : '❌ NO Accesso')}
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', opacity: event.animali ? 1 : 0.4 }}>
-            <span style={{ fontSize: '20px' }}>🐕</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '500' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '4px', 
+            padding: '10px 4px',
+            borderRadius: '10px',
+            background: event.animali ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            border: event.animali ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)'
+          }}>
+            <span style={{ fontSize: '22px' }}>{event.animali ? '🐕' : '🚫'}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
               {language === 'en' ? "Pets" : "Animali"}
             </span>
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-              {event.animali ? (language === 'en' ? 'Allowed' : 'Ammessi') : 'No'}
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: event.animali ? 'var(--accent-green)' : '#ef4444' }}>
+              {event.animali ? (language === 'en' ? '✅ Allowed' : '✅ Ammessi') : (language === 'en' ? '❌ Not Allowed' : '❌ NON Ammessi')}
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', opacity: event.parcheggio ? 1 : 0.4 }}>
-            <span style={{ fontSize: '20px' }}>🅿️</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: '500' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            gap: '4px', 
+            padding: '10px 4px',
+            borderRadius: '10px',
+            background: event.parcheggio ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            border: event.parcheggio ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)'
+          }}>
+            <span style={{ fontSize: '22px' }}>{event.parcheggio ? '🅿️' : '🚫'}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
               {language === 'en' ? "Parking" : "Parcheggio"}
             </span>
-            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-              {event.parcheggio ? (language === 'en' ? 'Available' : 'Disponibile') : 'No'}
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: event.parcheggio ? 'var(--accent-green)' : '#ef4444' }}>
+              {event.parcheggio ? (language === 'en' ? '✅ Present' : '✅ Presente') : (language === 'en' ? '❌ No Parking' : '❌ Assente')}
             </span>
           </div>
         </div>
@@ -1090,25 +1143,23 @@ END:VCALENDAR`;
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">{language === 'en' ? "Address / Location" : "Indirizzo / Luogo"}</label>
+                    <label className="form-label">{language === 'en' ? "Full Address (Street, Number, Town)" : "Indirizzo Completo dell'Evento (Via, N. Civico, Comune)"}</label>
                     <input 
                       type="text" 
                       className="form-input" 
+                      placeholder="es. Via Roma 15, Comignago (NO)..."
                       value={editLocation} 
-                      onChange={(e) => setEditLocation(e.target.value)} 
+                      onChange={(e) => {
+                        setEditLocation(e.target.value);
+                        handleEditGeocode(e.target.value);
+                      }} 
                       onBlur={(e) => handleEditGeocode(e.target.value)}
                     />
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{language === 'en' ? "GPS coordinates will be auto-filled" : "Le coordinate GPS verranno calcolate automaticamente sulla sfocatura"}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">GPS Latitudine</label>
-                      <input type="text" className="form-input" value={editLat} onChange={(e) => setEditLat(e.target.value)} />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">GPS Longitudine</label>
-                      <input type="text" className="form-input" value={editLng} onChange={(e) => setEditLng(e.target.value)} />
+                    <div style={{ marginTop: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>📍</span>
+                      <span>
+                        <strong>GPS Mappa:</strong> Lat: {editLat}, Lng: {editLng}
+                      </span>
                     </div>
                   </div>
 

@@ -134,27 +134,12 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       return;
     }
 
-    if (!currentPasswordConfirm) {
-      setProfileError(language === 'en' ? "Enter your current password to authorize updates." : "Inserisci la tua password attuale per autorizzare le modifiche.");
-      return;
-    }
-
-    // Verify current password first
-    if (user.password && user.password !== currentPasswordConfirm) {
-      setProfileError(language === 'en' ? "Current password is incorrect." : "La password attuale inserita non è corretta.");
-      return;
-    }
-
     const updatedFields = {
       comune,
       regione,
       phone,
       interests
     };
-
-    if (password.trim() !== '') {
-      updatedFields.password = password;
-    }
 
     // Generate 6-digit OTP code for email confirmation
     const generated = Math.floor(100000 + Math.random() * 900000).toString();
@@ -172,7 +157,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       return;
     }
 
-    const res = db.updateProfile(user.id, pendingUpdatedFields, currentPasswordConfirm);
+    const res = db.updateProfile(user.id, pendingUpdatedFields, user.password);
     if (res.success) {
       setProfileSuccess(language === 'en' ? "Profile updated successfully!" : "Profilo aggiornato con successo!");
       setShowOtpModal(false);
@@ -244,165 +229,239 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     <div className="view-content animate-fade-in" style={{ paddingBottom: '40px' }}>
       
       {/* Profile Header Card */}
-      <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', background: 'var(--gradient-card)' }}>
-        
-        {/* Interactive Avatar Image */}
-        <div 
-          onClick={() => setShowAvatarModal(true)}
-          style={{ 
-            position: 'relative',
-            width: '72px', 
-            height: '72px', 
-            borderRadius: '50%', 
-            border: '2.5px solid var(--accent-primary)', 
-            boxShadow: 'var(--shadow-glow)',
-            cursor: 'pointer',
-            overflow: 'hidden',
-            flexShrink: 0
-          }}
-          title={language === 'en' ? "Change profile photo" : "Cambia foto profilo"}
-        >
-          {user.avatar ? (
-            <img src={user.avatar} alt="Foto Profilo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <User size={32} color="var(--accent-primary)" />
-            </div>
-          )}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '22px',
-            background: 'rgba(0, 0, 0, 0.55)',
-            color: 'white',
-            fontSize: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold',
-            letterSpacing: '0.05em'
-          }}>
-            <Camera size={9} style={{ marginRight: '2px' }} /> {language === 'en' ? 'PHOTO' : 'FOTO'}
-          </div>
-        </div>
-        
-        <div>
-          <h2 style={{ fontSize: '20px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {user.name} {user.cognome}
-            {user.premium && <span className="verified-badge" title="Verificato">✓</span>}
-          </h2>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            {language === 'en' ? 'Role:' : 'Ruolo:'} <strong style={{ textTransform: 'capitalize' }}>
-              {user.role === 'organizzatore' ? (language === 'en' ? 'Organizer' : 'organizzatore') : (language === 'en' ? 'User' : 'utente')}
-            </strong>
-          </p>
+      <div className="glass-panel" style={{ padding: '24px', marginBottom: '20px', background: 'var(--gradient-card)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-            <Award size={14} color="var(--accent-orange)" />
-            <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
-              {user.points} {language === 'en' ? "Experience Points" : "Punti Esperienza"}
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Interactive Avatar Image */}
+            <div 
+              onClick={() => setShowAvatarModal(true)}
+              style={{ 
+                position: 'relative',
+                width: '80px', 
+                height: '80px', 
+                borderRadius: '50%', 
+                border: '3px solid var(--accent-primary)', 
+                boxShadow: 'var(--shadow-glow)',
+                cursor: 'pointer',
+                overflow: 'hidden',
+                flexShrink: 0
+              }}
+              title={language === 'en' ? "Change profile photo" : "Cambia foto profilo"}
+            >
+              {user.avatar ? (
+                <img src={user.avatar} alt="Foto Profilo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={36} color="var(--accent-primary)" />
+                </div>
+              )}
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '24px',
+                background: 'rgba(0, 0, 0, 0.65)',
+                color: 'white',
+                fontSize: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                letterSpacing: '0.05em'
+              }}>
+                <Camera size={10} style={{ marginRight: '3px' }} /> {language === 'en' ? 'FOTO' : 'CAMBIA'}
+              </div>
+            </div>
+            
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
+                  {user.name} {user.cognome}
+                </h2>
+                {user.premium && <span className="verified-badge" title="Organizzatore Verificato">✓ Verificato</span>}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '11px', background: 'var(--bg-tertiary)', padding: '3px 10px', borderRadius: '12px', color: 'var(--text-secondary)', border: '1px solid var(--border-glass)', fontWeight: '600' }}>
+                  👤 {user.role === 'organizzatore' ? 'Organizzatore Eventi' : 'Partecipante Utente'}
+                </span>
+                {user.comune && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    📍 {user.comune} ({user.regione || 'IT'})
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => {
+              setComune(user?.comune || '');
+              setRegione(user?.regione || '');
+              setPhone(user?.phone || '');
+              setEmail(user?.email || '');
+              setInterests(user?.interests || []);
+              setProfileError('');
+              setProfileSuccess('');
+              setShowEditProfileModal(true);
+            }}
+            className="btn btn-secondary"
+            style={{ fontSize: '13px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Settings size={15} color="var(--accent-primary)" />
+            <span>{t('edit_profile_btn')}</span>
+          </button>
+        </div>
+
+        {/* Quick Stats Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginTop: '20px' }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
+            <Award size={20} color="var(--accent-orange)" style={{ margin: '0 auto 4px' }} />
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>XP Totali</span>
+            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{user.points || 0} pt</strong>
+          </div>
+
+          <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
+            <span style={{ fontSize: '20px', display: 'block', marginBottom: '2px' }}>{currentLeague.emoji || '🛡️'}</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Lega</span>
+            <strong style={{ fontSize: '14px', color: 'var(--accent-primary)', whiteSpace: 'nowrap' }}>{currentLeague.name}</strong>
+          </div>
+
+          <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
+            <Sparkles size={20} color="var(--accent-pink)" style={{ margin: '0 auto 4px' }} />
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Badge</span>
+            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{user.badges?.length || 0}</strong>
+          </div>
+
+          <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
+            <Calendar size={20} color="var(--accent-green)" style={{ margin: '0 auto 4px' }} />
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Eventi</span>
+            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{user.goingEvents?.length || 0}</strong>
           </div>
         </div>
       </div>
 
-      {/* Badges Earned Section */}
-      <div className="glass-panel" style={{ padding: '16px', marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '15px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Sparkles size={18} color="var(--accent-orange)" /> {t('unlocked_badges')} ({user.badges?.length || 0})
-        </h3>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {user.badges && user.badges.length > 0 ? (
-            user.badges.map(b => {
-              // Translate badge titles if key is mapped
-              let displayBadgeName = b;
-              if (language === 'en') {
-                if (b === "Esploratore") displayBadgeName = "Explorer";
-                if (b === "Re delle feste di paese") displayBadgeName = "Festival King";
-                if (b === "Amante dei motori") displayBadgeName = "Gearhead";
-                if (b === "Cacciatore di concerti") displayBadgeName = "Concert Hunter";
-              }
-              const details = badgeDetails[b] || { emoji: "🏅", desc: "Badge sbloccato", color: "var(--accent-primary)" };
-              return (
-                <div key={b} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px', backgroundColor: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', border: `1px solid rgba(255, 255, 255, 0.04)` }}>
-                  <span style={{ fontSize: '26px' }}>{details.emoji}</span>
-                  <div>
-                    <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{displayBadgeName}</h4>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{details.desc}</p>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>
-              {language === 'en' ? "Join events and submit feedback the next morning to unlock your first Badges!" : "Partecipa agli eventi e invia recensioni la mattina dopo per sbloccare i tuoi primi Badge!"}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Leagues & Level Summary Card */}
+      {/* Leagues & Level Progress Card */}
       <div 
         className="glass-panel" 
         onClick={() => setShowLeaguesModal(true)}
         style={{ 
-          padding: '16px', 
+          padding: '18px', 
           marginBottom: '20px', 
           cursor: 'pointer',
-          border: '1px solid var(--border-glass)'
+          border: '1px solid var(--border-glass)',
+          position: 'relative'
         }}
       >
-        <h3 style={{ fontSize: '15px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
-          <Award size={18} color="var(--accent-primary)" /> {language === 'en' ? "Current Level and League" : "Livello e Lega Attuale"}
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <Award size={18} color="var(--accent-primary)" /> {language === 'en' ? "Current Level & League Progress" : "Livello e Progresso Lega Attuale"}
+          </h3>
+          <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>
+            {language === 'en' ? "View All Leagues →" : "Vedi tutte le leghe →"}
+          </span>
+        </div>
 
-        {/* Current League Display */}
-        <div style={{ background: 'var(--gradient-card)', border: '1px solid var(--border-glass)', padding: '12px', borderRadius: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 'bold', fontSize: '15px', color: 'var(--text-primary)' }}>{currentLeague.name}</span>
-            <span style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{userPoints} {language === 'en' ? "total XP" : "XP totali"}</span>
+        <div style={{ background: 'var(--gradient-card)', border: '1px solid var(--border-glass)', padding: '14px', borderRadius: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '22px' }}>{currentLeague.emoji || '🛡️'}</span>
+              <div>
+                <strong style={{ fontSize: '15px', color: 'var(--text-primary)', display: 'block' }}>{currentLeague.name}</strong>
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Livello di attività utente</span>
+              </div>
+            </div>
+            <span style={{ fontSize: '13px', background: 'var(--gradient-primary)', color: 'white', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
+              {userPoints} XP
+            </span>
           </div>
 
-          {/* Progress Bar */}
-          <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', marginBottom: '6px' }}>
-            <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--gradient-primary)', borderRadius: '4px', transition: 'width 0.4s' }} />
+          {/* Glowing Progress Bar */}
+          <div style={{ width: '100%', height: '10px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px', position: 'relative' }}>
+            <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--gradient-primary)', borderRadius: '6px', transition: 'width 0.5s ease-out', boxShadow: 'var(--shadow-glow)' }} />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             {nextLeague ? (
               <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                 {language === 'en' 
-                  ? `Only ${nextLeague.min - userPoints} XP left to reach ${nextLeague.name}` 
-                  : `Mancano ${nextLeague.min - userPoints} XP per raggiungere la ${nextLeague.name}`}
+                  ? `Mancano ${nextLeague.min - userPoints} XP per sbloccare ${nextLeague.name}` 
+                  : `Mancano ${nextLeague.min - userPoints} XP per sbloccare la ${nextLeague.name}`}
               </span>
             ) : (
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                {language === 'en' ? "You are in the top league! 👑" : "Sei nella lega massima! 👑"}
+              <span style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 'bold' }}>
+                {language === 'en' ? "Top League Reached! 👑" : "Hai raggiunto la Lega Massima! 👑"}
               </span>
             )}
-            <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>
-              {language === 'en' ? "See leagues →" : "Vedi leghe →"}
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
+              {progressPercent}% completato
             </span>
           </div>
         </div>
       </div>
 
+      {/* Badges Showcase Grid */}
+      <div className="glass-panel" style={{ padding: '18px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <Sparkles size={18} color="var(--accent-orange)" /> {t('unlocked_badges')} ({user.badges?.length || 0})
+          </h3>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            {user.badges?.length || 0} sbloccati
+          </span>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+          {Object.entries(badgeDetails).map(([badgeTitle, details]) => {
+            const isUnlocked = user.badges?.includes(badgeTitle);
+            return (
+              <div 
+                key={badgeTitle} 
+                style={{ 
+                  display: 'flex', 
+                  gap: '12px', 
+                  alignItems: 'center', 
+                  padding: '12px', 
+                  backgroundColor: isUnlocked ? 'rgba(16, 185, 129, 0.06)' : 'var(--bg-secondary)', 
+                  borderRadius: '12px', 
+                  border: isUnlocked ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-glass)',
+                  opacity: isUnlocked ? 1 : 0.6,
+                  transition: 'transform 0.2s'
+                }}
+              >
+                <span style={{ fontSize: '28px', filter: isUnlocked ? 'none' : 'grayscale(80%)' }}>
+                  {details.emoji}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{badgeTitle}</h4>
+                    <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '6px', background: isUnlocked ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: isUnlocked ? 'var(--accent-green)' : 'var(--text-muted)', fontWeight: 'bold' }}>
+                      {isUnlocked ? '✅ Sbloccato' : '🔒 Bloccato'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: '1.3' }}>{details.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Album Ricordi & Memory Photo Wall */}
-      <div className="glass-panel" style={{ padding: '16px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+      <div className="glass-panel" style={{ padding: '18px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
             📸 {language === 'en' ? "My Memory Photo Wall" : "Album dei Miei Ricordi"}
           </h3>
-          <span style={{ fontSize: '11px', background: 'var(--gradient-primary)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
-            {user.goingEvents?.length || 0} {language === 'en' ? 'Events' : 'Eventi'}
+          <span style={{ fontSize: '11px', background: 'var(--gradient-primary)', color: 'white', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
+            {user.goingEvents?.length || 0} Eventi Partecipati
           </span>
         </div>
 
         {user.goingEvents && user.goingEvents.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
             {db.getEvents()
               .filter(e => user.goingEvents.includes(e.id))
               .map(e => (
@@ -411,7 +470,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                   className="glass-card"
                   style={{
                     padding: '8px',
-                    borderRadius: '10px',
+                    borderRadius: '12px',
                     textAlign: 'center',
                     background: 'var(--bg-tertiary)',
                     border: '1px solid var(--border-glass)'
@@ -420,7 +479,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                   <img 
                     src={e.poster || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300"} 
                     alt={e.title}
-                    style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '6px', marginBottom: '6px' }}
+                    style={{ width: '100%', height: '85px', objectFit: 'cover', borderRadius: '8px', marginBottom: '6px' }}
                   />
                   <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {e.title}
@@ -432,62 +491,44 @@ export default function ProfileTab({ user, onProfileUpdated }) {
               ))}
           </div>
         ) : (
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
-            {language === 'en' 
-              ? "You haven't joined any events yet. Join events to populate your memory album!" 
-              : "Non hai ancora partecipato a eventi. Iscriviti agli eventi per riempire il tuo album ricordo!"}
-          </p>
+          <div style={{ textAlign: 'center', padding: '24px 16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px border-glass' }}>
+            <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>🎟️</span>
+            <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold', marginBottom: '4px' }}>
+              Nessun evento salvato nel tuo album ricordi
+            </p>
+            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '14px', maxWidth: '340px', margin: '0 auto 14px' }}>
+              Clicca su "Partecipò" nelle schede degli eventi per aggiungerli al tuo album personale e accumulare punti XP!
+            </p>
+          </div>
         )}
       </div>
 
-      {/* Account Settings / Edit Profile Trigger */}
-      <div className="glass-panel" style={{ padding: '16px' }}>
-        <h3 style={{ fontSize: '15px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Settings size={18} color="var(--text-secondary)" /> {language === 'en' ? "Profile Settings" : "Impostazioni Profilo"}
-        </h3>
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-          {language === 'en' ? "Update your personal details, credentials, and event interests." : "Aggiorna le tue informazioni personali, la password e le preferenze sugli eventi."}
-        </p>
-
-        {profileSuccess && (
-          <div className="banner" style={{ borderLeft: '4px solid var(--accent-green)', background: 'rgba(16, 185, 129, 0.1)', marginBottom: '12px' }}>
-            <CheckCircle2 size={16} color="var(--accent-green)" className="banner-icon" />
-            <span style={{ color: 'var(--accent-green)', fontWeight: 500 }}>{profileSuccess}</span>
-          </div>
-        )}
-
-        {profileError && (
-          <div className="banner" style={{ borderLeft: '4px solid var(--accent-pink)', background: 'rgba(244, 63, 94, 0.1)', marginBottom: '12px' }}>
-            <span style={{ color: 'var(--accent-pink)' }}>{profileError}</span>
-          </div>
-        )}
-
+      {/* Account Preferences & Legal Buttons */}
+      <div className="glass-panel" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <button 
           onClick={() => {
             setComune(user?.comune || '');
             setRegione(user?.regione || '');
             setPhone(user?.phone || '');
             setEmail(user?.email || '');
-            setPassword('');
             setInterests(user?.interests || []);
-            setCurrentPasswordConfirm('');
             setProfileError('');
             setProfileSuccess('');
             setShowEditProfileModal(true);
           }}
-          className="btn btn-primary"
+          className="btn btn-secondary"
           style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
         >
-          <span>⚙️ {t('edit_profile_btn')}</span>
+          <span>⚙️ Modifica Dati Personali & Preferenze Interessi</span>
         </button>
 
         <button 
           type="button"
           onClick={() => setIsLegalOpen(true)}
           className="btn btn-secondary"
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '8px' }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
         >
-          <span>⚖️ {language === 'en' ? "Privacy & GDPR Legal Notes" : "Privacy & Note Legali GDPR"}</span>
+          <span>⚖️ Termini di Servizio & Privacy Policy GDPR</span>
         </button>
       </div>
 
@@ -630,14 +671,6 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">{language === 'en' ? "New Password" : "Nuova Password"}</label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
-                  <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ paddingLeft: '40px' }} placeholder={language === 'en' ? "Leave empty to keep current" : "Lascia vuoto per non cambiarla"} />
-                </div>
-              </div>
-
               {/* Interests selection */}
               <div className="form-group">
                 <label className="form-label">{t('interests_title')}</label>
@@ -668,25 +701,6 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                       </button>
                     );
                   })}
-                </div>
-              </div>
-
-              {/* Secure verification input */}
-              <div className="form-group" style={{ marginTop: '16px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
-                <label className="form-label" style={{ color: 'var(--accent-pink)', fontWeight: 'bold' }}>
-                  {language === 'en' ? "Confirm changes with Current Password" : "Conferma modifiche con Password Attuale"}
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
-                  <input 
-                    type="password" 
-                    className="form-input" 
-                    style={{ paddingLeft: '40px', borderColor: 'var(--accent-pink)' }} 
-                    value={currentPasswordConfirm} 
-                    onChange={(e) => setCurrentPasswordConfirm(e.target.value)} 
-                    placeholder="••••••••" 
-                    required
-                  />
                 </div>
               </div>
 

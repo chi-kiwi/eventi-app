@@ -574,6 +574,7 @@ export default function App() {
                   user={currentUser} 
                   events={events} 
                   onRefreshEvents={handleRefreshEvents} 
+                  onSelectEvent={handleSelectEvent}
                 />
               )}
 

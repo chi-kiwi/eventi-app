@@ -3,7 +3,7 @@ import { Eye, Heart, Check, Users, MapPin, Calendar, Award, UserPlus, Shield, Sp
 import { db, getDistance } from '../services/db';
 import { searchItalianComuni } from '../services/comuni';
 
-export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
+export default function OrganizerDashboard({ user, events, onRefreshEvents, onSelectEvent }) {
   const [dashTab, setDashTab] = useState('stats'); // stats / create / collaborators
   
   // Selection of event to view statistics
@@ -46,6 +46,43 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
 
   // Refresh counter to trigger re-renders
   const [refreshCounter, setRefreshCounter] = useState(0);
+
+  // Custom Food & Drink stock values per event
+  const [customStock, setCustomStock] = useState(null);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      try {
+        const saved = localStorage.getItem(`evt_custom_stock_${selectedEventId}`);
+        setCustomStock(saved ? JSON.parse(saved) : null);
+      } catch (e) {
+        setCustomStock(null);
+      }
+    } else {
+      setCustomStock(null);
+    }
+  }, [selectedEventId]);
+
+  const handleUpdateCustomStock = (field, val) => {
+    if (!selectedEventId) return;
+    const stats = activeEvent ? db.getEventStats(activeEvent.id) : null;
+    const estPpl = Math.max(20, Math.round((stats?.going || 0) + ((stats?.interested || 0) * 0.4)));
+    const current = customStock || {
+      sandwiches: Math.round(estPpl * 1.25),
+      beerLiters: (estPpl * 0.75).toFixed(1),
+      friesPortions: Math.round(estPpl * 0.65),
+      tablesNeeded: Math.ceil(estPpl / 6)
+    };
+    const updated = { ...current, [field]: val };
+    setCustomStock(updated);
+    localStorage.setItem(`evt_custom_stock_${selectedEventId}`, JSON.stringify(updated));
+  };
+
+  const handleResetCustomStock = () => {
+    if (!selectedEventId) return;
+    setCustomStock(null);
+    localStorage.removeItem(`evt_custom_stock_${selectedEventId}`);
+  };
 
   // Load event draft on mount
   useEffect(() => {
@@ -425,7 +462,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div className="form-group">
-            <label className="form-label">Seleziona Evento da Monitorare</label>
+            <label className="form-label">Seleziona Evento da Monitorare o Modificare</label>
             <select 
               className="form-input form-select"
               value={selectedEventId}
@@ -436,6 +473,16 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
               ))}
               {myEvents.length === 0 && <option>Nessun evento organizzato</option>}
             </select>
+            {activeEvent && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-small"
+                onClick={() => onSelectEvent && onSelectEvent(activeEvent)}
+                style={{ marginTop: '8px', width: '100%', fontSize: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+              >
+                ✏️ Modifica Dettagli / Locandina di Questo Evento
+              </button>
+            )}
           </div>
 
           {activeEvent && stats ? (
@@ -492,44 +539,96 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
 
               {/* Food & Drink Inventory Estimator Card */}
               <div className="glass-panel" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                <h3 style={{ fontSize: '15px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
-                  📊 Stima Scorte Food & Drink (Sagre & Eventi)
-                </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h3 style={{ fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', margin: 0 }}>
+                    📊 Gestione Scorte Food & Drink (Personalizzabile)
+                  </h3>
+                  {customStock && (
+                    <button 
+                      type="button" 
+                      className="btn btn-small"
+                      onClick={handleResetCustomStock}
+                      style={{ fontSize: '11px', padding: '4px 8px', background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}
+                    >
+                      🔄 Ripristina Calcolo Auto
+                    </button>
+                  )}
+                </div>
+
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                  Stima consigliata in base ai <strong>{stats.going} partecipanti confermati</strong> e <strong>{stats.interested} interessati</strong>:
+                  Puoi modificare i valori direttamente nelle caselle qui sotto per il tuo evento ({stats.going} confermati, {stats.interested} interessati):
                 </p>
 
                 {(() => {
                   const estimatedPeople = Math.max(20, Math.round(stats.going + (stats.interested * 0.4)));
-                  const sandwiches = Math.round(estimatedPeople * 1.25);
-                  const beerLiters = (estimatedPeople * 0.75).toFixed(1);
-                  const friesPortions = Math.round(estimatedPeople * 0.65);
-                  const tablesNeeded = Math.ceil(estimatedPeople / 6);
+                  const sandwiches = customStock?.sandwiches !== undefined ? customStock.sandwiches : Math.round(estimatedPeople * 1.25);
+                  const beerLiters = customStock?.beerLiters !== undefined ? customStock.beerLiters : (estimatedPeople * 0.75).toFixed(1);
+                  const friesPortions = customStock?.friesPortions !== undefined ? customStock.friesPortions : Math.round(estimatedPeople * 0.65);
+                  const tablesNeeded = customStock?.tablesNeeded !== undefined ? customStock.tablesNeeded : Math.ceil(estimatedPeople / 6);
+
                   return (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '12px' }}>
+                      
                       <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                         <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🥪</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Panini / Piatti Cibo</span>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--accent-orange)', marginTop: '2px' }}>~{sandwiches} porzioni</strong>
+                        <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Panini / Piatti Cibo</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            value={sandwiches}
+                            onChange={(e) => handleUpdateCustomStock('sandwiches', e.target.value)}
+                            style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-orange)', width: '80px' }}
+                          />
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>porzioni</span>
+                        </div>
                       </div>
 
                       <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                         <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🍺</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Bevande / Birra</span>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--accent-primary)', marginTop: '2px' }}>~{beerLiters} Litri</strong>
+                        <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Bevande / Birra</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            value={beerLiters}
+                            onChange={(e) => handleUpdateCustomStock('beerLiters', e.target.value)}
+                            style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-primary)', width: '80px' }}
+                          />
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Litri</span>
+                        </div>
                       </div>
 
                       <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                         <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🍟</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Contorni / Snack</span>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--accent-green)', marginTop: '2px' }}>~{friesPortions} porzioni</strong>
+                        <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Contorni / Snack</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            value={friesPortions}
+                            onChange={(e) => handleUpdateCustomStock('friesPortions', e.target.value)}
+                            style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-green)', width: '80px' }}
+                          />
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>porzioni</span>
+                        </div>
                       </div>
 
                       <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                         <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>📦</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Posti / Tavoli</span>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)', marginTop: '2px' }}>~{tablesNeeded} tavoli</strong>
+                        <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Posti / Tavoli</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            value={tablesNeeded}
+                            onChange={(e) => handleUpdateCustomStock('tablesNeeded', e.target.value)}
+                            style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', width: '80px' }}
+                          />
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>tavoli</span>
+                        </div>
                       </div>
+
                     </div>
                   );
                 })()}
@@ -645,11 +744,11 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
           </div>
 
           <div className="form-group" style={{ position: 'relative' }}>
-            <label className="form-label">Comune / Indirizzo dell'Evento</label>
+            <label className="form-label">Indirizzo Completo dell'Evento (Via, N. Civico, Comune)</label>
             <input 
               type="text" 
               className="form-input" 
-              placeholder="es. Cuggiono, Legnano, Milano, Oleggio..." 
+              placeholder="es. Via Roma 15, Comignago (NO) o Piazza Duomo 1, Milano..." 
               value={newLocation}
               onChange={(e) => {
                 setNewLocation(e.target.value);
