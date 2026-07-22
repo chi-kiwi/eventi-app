@@ -869,38 +869,6 @@ class LocalDB {
       window.dispatchEvent(new CustomEvent('evt_chat_updated'));
     }
 
-    // Auto-reply simulation if sending to organizer (org_1)
-    if (receiverId === 'org_1' && senderId !== 'org_1') {
-      setTimeout(() => {
-        const events = this.getEvents();
-        const evt = events.find(e => e.id === eventId);
-        const eventTitle = evt ? evt.title : 'Evento';
-        const autoText = `Ciao! Grazie per averci scritto. In merito a "${eventTitle}", ti confermo che l'evento è confermato e che trovi tutte le info aggiornate nella scheda! 😊`;
-        
-        const currentMsgs = this.getMessages();
-        const replyMsg = {
-          id: "msg_reply_" + Date.now(),
-          eventId,
-          senderId: 'org_1',
-          receiverId: senderId,
-          message: autoText,
-          timestamp: new Date().toISOString()
-        };
-        currentMsgs.push(replyMsg);
-        this.saveMessages(currentMsgs);
-
-        if (syncChannel) {
-          try {
-            syncChannel.postMessage({ type: 'NEW_PRIVATE_MESSAGE', data: replyMsg });
-          } catch (e) { }
-        }
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('storage'));
-          window.dispatchEvent(new CustomEvent('evt_chat_updated'));
-        }
-      }, 1500);
-    }
-
     return newMessage;
   }
 

@@ -56,20 +56,6 @@ export default function ChatTab({ user, initialActiveChat }) {
     // Refresh conversations list
     setConversations(db.getChatsForUser(user.id));
     scrollToBottom();
-
-    // Simulator automated response after 2 seconds
-    setTimeout(() => {
-      const autoText = `Grazie per averci contattato! Abbiamo preso in carico la tua richiesta per l'evento "${activeChat.eventTitle}". Ti risponderemo il prima possibile.`;
-      const replyMsg = db.sendMessage(activeChat.eventId, activeChat.otherUserId, user.id, autoText);
-      
-      // If still viewing the same chat
-      if (activeChat.otherUserId === replyMsg.senderId && activeChat.eventId === replyMsg.eventId) {
-        setMessages(prev => [...prev, replyMsg]);
-      }
-      
-      setConversations(db.getChatsForUser(user.id));
-      scrollToBottom();
-    }, 2000);
   };
 
   if (!user) return <div style={{ padding: '20px', textAlign: 'center' }}>Accedi per visualizzare i messaggi.</div>;

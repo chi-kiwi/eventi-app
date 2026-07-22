@@ -183,12 +183,6 @@ export default function App() {
     const orgName = orgObj ? `${orgObj.name} ${orgObj.cognome}` : 'Organizzatore';
     const eventTitle = eventObj ? eventObj.title : 'Evento';
 
-    // Send a first contact message if no message exists
-    const messages = db.getChatMessages(eventId, currentUser.id, organizerId);
-    if (messages.length === 0) {
-      db.sendMessage(eventId, currentUser.id, organizerId, `Salve! Vorrei chiedervi alcune informazioni sull'evento "${eventTitle}".`);
-    }
-
     const targetChat = {
       eventId,
       otherUserId: organizerId,
