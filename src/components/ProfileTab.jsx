@@ -57,7 +57,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 99, 
       badge: "🥉",
       status: language === 'en' ? "Community Novice" : "Novizio della Community",
-      gif: "https://i.giphy.com/3ornk57KwDXf81rjWM.gif"
+      gif: "https://media.tenor.com/D-47nqy1P4IAAAAC/obi-wan-kenobi-star-wars.gif"
     },
     { 
       name: language === 'en' ? "Silver League 🥈" : "Lega Argento 🥈", 
@@ -65,7 +65,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 249, 
       badge: "🥈",
       status: language === 'en' ? "Active Explorer" : "Esploratore Attivo",
-      gif: "https://i.giphy.com/l0amJzR3yZyxAkDVS.gif"
+      gif: "https://media.tenor.com/Z4w294aGvO4AAAAC/minions-yay.gif"
     },
     { 
       name: language === 'en' ? "Gold League 🥇" : "Lega Oro 🥇", 
@@ -73,7 +73,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 499, 
       badge: "🥇",
       status: language === 'en' ? "Expert Participant" : "Partecipante Esperto",
-      gif: "https://i.giphy.com/kyLYJR7ql3Go0.gif"
+      gif: "https://media.tenor.com/F325jF3N218AAAAC/leonardo-dicaprio-cheers.gif"
     },
     { 
       name: language === 'en' ? "Platinum League 💎" : "Lega Platino 💎", 
@@ -81,7 +81,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 999, 
       badge: "💎",
       status: language === 'en' ? "Community Leader" : "Leader della Community",
-      gif: "https://i.giphy.com/g9582DNuQppazjLH33.gif"
+      gif: "https://media.tenor.com/gO14M4Q984wAAAAd/carlton-dance.gif"
     },
     { 
       name: language === 'en' ? "Diamond League 🏆" : "Lega Diamante 🏆", 
@@ -89,7 +89,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: Infinity, 
       badge: "🏆",
       status: language === 'en' ? "Event Legend" : "Leggenda degli Eventi",
-      gif: "https://i.giphy.com/3oz8xAFtqo0LGR2TgK.gif"
+      gif: "https://media.tenor.com/g91g5xL2QyQAAAAC/trophy-lift.gif"
     }
   ];
 
@@ -505,11 +505,21 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                       <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: '1.4', marginBottom: '6px', fontWeight: '500' }}>
                         Rango: {league.status}
                       </p>
-                      <img 
-                        src={league.gif} 
-                        alt="applause-meme" 
-                        style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-glass)' }} 
-                      />
+                      <div style={{ position: 'relative', width: '100%', height: '110px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
+                        <img 
+                          src={league.gif} 
+                          alt={league.name} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div style={{ display: 'none', width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,56,92,0.15) 0%, rgba(79,70,229,0.15) 100%)', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '32px' }}>{league.badge}</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{league.name}</span>
+                        </div>
+                      </div>
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap' }}>
                       {league.max === Infinity ? `+${league.min} XP` : `${league.min}-${league.max} XP`}

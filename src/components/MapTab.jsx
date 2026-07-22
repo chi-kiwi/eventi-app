@@ -41,7 +41,11 @@ export default function MapTab({ events, onSelectEvent, user }) {
       // Create map instance
       mapInstance.current = L.map(mapRef.current, {
         zoomControl: true,
-        scrollWheelZoom: true
+        scrollWheelZoom: true,
+        touchZoom: true,
+        dragging: true,
+        doubleClickZoom: true,
+        tap: true
       }).setView([userCoords.lat, userCoords.lng], 10);
 
       // Add OpenStreetMap tiles

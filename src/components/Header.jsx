@@ -66,7 +66,7 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
                   <User size={12} color="var(--text-secondary)" />
                 </div>
               )}
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <span className="header-user-name" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {user.name}
               </span>
               {user.premium && (

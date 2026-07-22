@@ -241,15 +241,15 @@ export default function App() {
 
         // Set the celebration meme state
         const memeMap = {
-          "Lega Diamante 🏆": "https://i.giphy.com/3oz8xAFtqo0LGR2TgK.gif",
-          "Lega Platino 💎": "https://i.giphy.com/g9582DNuQppazjLH33.gif",
-          "Lega Oro 🥇": "https://i.giphy.com/kyLYJR7ql3Go0.gif",
-          "Lega Argento 🥈": "https://i.giphy.com/l0amJzR3yZyxAkDVS.gif",
-          "Lega Bronzo 🥉": "https://i.giphy.com/3ornk57KwDXf81rjWM.gif"
+          "Lega Diamante 🏆": "https://media.tenor.com/g91g5xL2QyQAAAAC/trophy-lift.gif",
+          "Lega Platino 💎": "https://media.tenor.com/gO14M4Q984wAAAAd/carlton-dance.gif",
+          "Lega Oro 🥇": "https://media.tenor.com/F325jF3N218AAAAC/leonardo-dicaprio-cheers.gif",
+          "Lega Argento 🥈": "https://media.tenor.com/Z4w294aGvO4AAAAC/minions-yay.gif",
+          "Lega Bronzo 🥉": "https://media.tenor.com/D-47nqy1P4IAAAAC/obi-wan-kenobi-star-wars.gif"
         };
         setLeagueMemeCelebration({
           name: newLeague,
-          gif: memeMap[newLeague] || "https://i.giphy.com/l0amJzR3yZyxAkDVS.gif"
+          gif: memeMap[newLeague] || "https://media.tenor.com/Z4w294aGvO4AAAAC/minions-yay.gif"
         });
       }
 
@@ -342,11 +342,21 @@ export default function App() {
               {leagueMemeCelebration.name}
             </h4>
             
-            <img 
-              src={leagueMemeCelebration.gif} 
-              alt="clapping-applause-meme" 
-              style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-glass)', marginBottom: '20px' }}
-            />
+            <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-glass)', marginBottom: '20px' }}>
+              <img 
+                src={leagueMemeCelebration.gif} 
+                alt="clapping-applause-meme" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div style={{ display: 'none', width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,56,92,0.2) 0%, rgba(79,70,229,0.2) 100%)', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '50px' }}>🏆</span>
+                <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{leagueMemeCelebration.name}</span>
+              </div>
+            </div>
             
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
               Complimenti! Hai accumulato abbastanza XP per salire di rango nella community. Continua così!

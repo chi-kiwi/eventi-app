@@ -638,15 +638,12 @@ END:VCALENDAR`;
               </h4>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {language === 'en' ? "Use a quick test photo:" : "Usa una foto di test rapida:"}
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                  {PHOTO_PRESETS.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className="tag-pill"
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                  {PHOTO_PRESETS.map((preset, pIdx) => (
+                    <button 
+                      key={pIdx}
+                      type="button" 
+                      className="btn btn-secondary btn-small"
                       style={{ fontSize: '11px', padding: '4px 8px' }}
                       onClick={() => handleAddPhotoSubmit(null, preset.url)}
                     >
@@ -655,12 +652,37 @@ END:VCALENDAR`;
                   ))}
                 </div>
 
+                {/* Device file upload for event photo */}
+                <div style={{ marginBottom: '12px', borderTop: '1px solid var(--border-glass)', paddingTop: '10px' }}>
+                  <input 
+                    type="file" 
+                    id="event-photo-file-input" 
+                    accept="image/*" 
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (evt) => handleAddPhotoSubmit(null, evt.target.result);
+                        reader.readAsDataURL(file);
+                      }
+                    }} 
+                  />
+                  <label 
+                    htmlFor="event-photo-file-input" 
+                    className="btn btn-secondary" 
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', fontSize: '13px' }}
+                  >
+                    📁 {language === 'en' ? "Upload Photo from Device / Gallery" : "Carica Foto da Galleria o Fotocamera"}
+                  </label>
+                </div>
+
                 <form onSubmit={handleAddPhotoSubmit}>
                   <div className="form-group" style={{ marginBottom: '8px' }}>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder={language === 'en' ? "Paste an image URL..." : "Incolla l'URL di un'immagine..."}
+                      placeholder={language === 'en' ? "Or paste an image URL..." : "O incolla l'URL di un'immagine..."}
                       value={uploadUrl}
                       onChange={(e) => setUploadUrl(e.target.value)}
                     />
@@ -670,10 +692,10 @@ END:VCALENDAR`;
                   
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button type="button" className="btn btn-secondary btn-small" onClick={() => setShowUploadForm(false)} style={{ flex: 1 }}>
-                      Annulla
+                      {t('cancel')}
                     </button>
                     <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                      Invia
+                      {language === 'en' ? "Submit" : "Invia"}
                     </button>
                   </div>
                 </form>

@@ -13,7 +13,8 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   // New Event Form State
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newDate, setNewDate] = useState('');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [newDate, setNewDate] = useState(todayStr);
   const [newTime, setNewTime] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [newLat, setNewLat] = useState('45.4642');
@@ -446,7 +447,13 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
       {/* VIEW: CREATE EVENT */}
       {dashTab === 'create' && (
         <form onSubmit={handleCreateEvent} className="glass-panel animate-fade-in" style={{ padding: '20px' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '16px' }}>Nuovo Evento</h3>
+          <h3 style={{ fontSize: '18px', marginBottom: '12px' }}>Nuovo Evento</h3>
+          
+          <div className="banner" style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', marginBottom: '16px' }}>
+            <p className="banner-text" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              ✏️ <strong>Modalità Bozza:</strong> I dati inseriti vengono memorizzati in automatico. L'evento verrà <u>pubblicato per la community</u> solo dopo aver cliccato <strong>"Pubblica Evento"</strong> in fondo alla scheda.
+            </p>
+          </div>
           
           <div className="form-group">
             <label className="form-label">Titolo Evento</label>
