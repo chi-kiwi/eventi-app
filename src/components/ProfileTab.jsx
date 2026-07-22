@@ -57,7 +57,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 99, 
       badge: "🥉",
       status: language === 'en' ? "Community Novice" : "Novizio della Community",
-      gif: "https://media.tenor.com/D-47nqy1P4IAAAAC/obi-wan-kenobi-star-wars.gif"
+      gradient: "linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(180, 83, 9, 0.25) 100%)",
+      color: "#d97706"
     },
     { 
       name: language === 'en' ? "Silver League 🥈" : "Lega Argento 🥈", 
@@ -65,7 +66,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 249, 
       badge: "🥈",
       status: language === 'en' ? "Active Explorer" : "Esploratore Attivo",
-      gif: "https://media.tenor.com/Z4w294aGvO4AAAAC/minions-yay.gif"
+      gradient: "linear-gradient(135deg, rgba(148, 163, 184, 0.15) 0%, rgba(71, 85, 105, 0.25) 100%)",
+      color: "#94a3b8"
     },
     { 
       name: language === 'en' ? "Gold League 🥇" : "Lega Oro 🥇", 
@@ -73,7 +75,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 499, 
       badge: "🥇",
       status: language === 'en' ? "Expert Participant" : "Partecipante Esperto",
-      gif: "https://media.tenor.com/F325jF3N218AAAAC/leonardo-dicaprio-cheers.gif"
+      gradient: "linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.3) 100%)",
+      color: "#f59e0b"
     },
     { 
       name: language === 'en' ? "Platinum League 💎" : "Lega Platino 💎", 
@@ -81,7 +84,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: 999, 
       badge: "💎",
       status: language === 'en' ? "Community Leader" : "Leader della Community",
-      gif: "https://media.tenor.com/gO14M4Q984wAAAAd/carlton-dance.gif"
+      gradient: "linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.3) 100%)",
+      color: "#06b6d4"
     },
     { 
       name: language === 'en' ? "Diamond League 🏆" : "Lega Diamante 🏆", 
@@ -89,7 +93,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       max: Infinity, 
       badge: "🏆",
       status: language === 'en' ? "Event Legend" : "Leggenda degli Eventi",
-      gif: "https://media.tenor.com/g91g5xL2QyQAAAAC/trophy-lift.gif"
+      gradient: "linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.35) 100%)",
+      color: "#a855f7"
     }
   ];
 
@@ -476,53 +481,57 @@ export default function ProfileTab({ user, onProfileUpdated }) {
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
               {LEAGUES.map(league => {
                 const isUserLeague = currentLeague.name === league.name;
                 return (
                   <div 
                     key={league.name} 
                     style={{ 
-                      padding: '12px', 
-                      borderRadius: '8px', 
+                      padding: '14px', 
+                      borderRadius: '12px', 
                       border: isUserLeague ? '2px solid var(--accent-primary)' : '1px solid var(--border-glass)', 
-                      background: isUserLeague ? 'rgba(79, 70, 229, 0.06)' : 'var(--bg-secondary)',
+                      background: isUserLeague ? 'rgba(255, 56, 92, 0.08)' : 'var(--bg-secondary)',
+                      boxShadow: isUserLeague ? 'var(--shadow-glow)' : 'var(--shadow-sm)',
                       display: 'flex',
-                      justifyContent: 'space-between',
                       alignItems: 'center',
-                      gap: '12px'
+                      gap: '14px',
+                      position: 'relative',
+                      overflow: 'hidden'
                     }}
                   >
+                    <div style={{ 
+                      width: '54px', 
+                      height: '54px', 
+                      borderRadius: '12px', 
+                      background: league.gradient, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      fontSize: '28px',
+                      flexShrink: 0,
+                      border: '1px solid var(--border-glass)'
+                    }}>
+                      {league.badge}
+                    </div>
+
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: isUserLeague ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: isUserLeague ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
                           {league.name}
                         </span>
                         {isUserLeague && (
-                          <span style={{ fontSize: '10px', backgroundColor: 'var(--accent-primary)', color: 'white', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>{language === 'en' ? "You" : "Tu"}</span>
+                          <span style={{ fontSize: '10px', backgroundColor: 'var(--accent-primary)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                            {language === 'en' ? "YOUR LEAGUE ✓" : "TU SEI QUI ✓"}
+                          </span>
                         )}
                       </div>
-                      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: '1.4', marginBottom: '6px', fontWeight: '500' }}>
-                        Rango: {league.status}
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', fontWeight: '500' }}>
+                        {league.status}
                       </p>
-                      <div style={{ position: 'relative', width: '100%', height: '110px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
-                        <img 
-                          src={league.gif} 
-                          alt={league.name} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                        <div style={{ display: 'none', width: '100%', height: '100%', background: 'linear-gradient(135deg, rgba(255,56,92,0.15) 0%, rgba(79,70,229,0.15) 100%)', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ fontSize: '32px' }}>{league.badge}</span>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{league.name}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                      {league.max === Infinity ? `+${league.min} XP` : `${league.min}-${league.max} XP`}
+                      <span style={{ fontSize: '11px', color: league.color, fontWeight: '700', marginTop: '4px', display: 'inline-block' }}>
+                        {league.max === Infinity ? `Requisito: +${league.min} XP` : `Requisito: ${league.min} - ${league.max} XP`}
+                      </span>
                     </div>
                   </div>
                 );

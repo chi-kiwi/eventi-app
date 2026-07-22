@@ -27,25 +27,35 @@ export default function MapTab({ events, onSelectEvent, user }) {
   const markersGroupRef = useRef(null);
   const radiusCircleRef = useRef(null);
 
-  // Initialize user position from profile
+  // Initialize user position from profile once on mount
   useEffect(() => {
+    // Check if real GPS was saved in session
+    const savedGps = sessionStorage.getItem('evt_real_gps');
+    if (savedGps) {
+      try {
+        const parsed = JSON.parse(savedGps);
+        setUserCoords(parsed.coords);
+        setUserLocationName(parsed.name);
+        return;
+      } catch (e) {}
+    }
+    
     if (user && user.comune && LOCATIONS[user.comune]) {
       setUserLocationName(user.comune);
       setUserCoords(LOCATIONS[user.comune]);
     }
-  }, [user]);
+  }, []);
 
   // Leaflet map initialization
   useEffect(() => {
     if (mapRef.current && !mapInstance.current) {
-      // Create map instance
+      // Create map instance with full interactive controls
       mapInstance.current = L.map(mapRef.current, {
         zoomControl: true,
         scrollWheelZoom: true,
         touchZoom: true,
         dragging: true,
-        doubleClickZoom: true,
-        tap: true
+        doubleClickZoom: true
       }).setView([userCoords.lat, userCoords.lng], 10);
 
       // Add OpenStreetMap tiles
@@ -55,6 +65,11 @@ export default function MapTab({ events, onSelectEvent, user }) {
 
       // Layer groups for markers and accuracy circle
       markersGroupRef.current = L.layerGroup().addTo(mapInstance.current);
+
+      // Invalidate size to ensure container touch bounds are calculated
+      setTimeout(() => {
+        if (mapInstance.current) mapInstance.current.invalidateSize();
+      }, 200);
     }
 
     return () => {
@@ -66,12 +81,16 @@ export default function MapTab({ events, onSelectEvent, user }) {
     };
   }, []);
 
-  // Update map viewport and markers when state dependencies change
+  // Update map viewport ONLY when user selects a new location or detects GPS
   useEffect(() => {
     if (mapInstance.current) {
-      // Pan/Zoom map to current coordinates
-      mapInstance.current.setView([userCoords.lat, userCoords.lng], mapInstance.current.getZoom());
+      mapInstance.current.flyTo([userCoords.lat, userCoords.lng], 10, { duration: 1.2 });
+    }
+  }, [userCoords]);
 
+  // Render markers and radius circle dynamically without snapping view
+  useEffect(() => {
+    if (mapInstance.current) {
       // Clear old layers
       if (markersGroupRef.current) {
         markersGroupRef.current.clearLayers();
@@ -193,11 +212,17 @@ export default function MapTab({ events, onSelectEvent, user }) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lat: parseFloat(position.coords.latitude.toFixed(4)),
+            lng: parseFloat(position.coords.longitude.toFixed(4))
           };
+          const locName = language === 'en' ? "My GPS Coordinates" : "Tua Posizione GPS";
           setUserCoords(coords);
-          setUserLocationName(language === 'en' ? "My GPS Coordinates" : "Tua Posizione GPS");
+          setUserLocationName(locName);
+
+          // Save to session so tab switches do not reset position
+          try {
+            sessionStorage.setItem('evt_real_gps', JSON.stringify({ coords, name: locName }));
+          } catch (e) {}
           
           const nearbyEvents = events.filter(e => {
             if (!e.gps) return false;
@@ -215,8 +240,9 @@ export default function MapTab({ events, onSelectEvent, user }) {
           }
         },
         (error) => {
-          alert(language === 'en' ? "Could not access location. Using profile reference city." : "Impossibile accedere alla geolocalizzazione. Verrà usata la città del tuo profilo.");
-        }
+          alert(language === 'en' ? "Could not access GPS location. Make sure GPS permissions are enabled." : "Impossibile accedere alla geolocalizzazione GPS. Assicurati che i permessi del browser siano attivi.");
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
       );
     } else {
       alert(language === 'en' ? "Geolocation is not supported by your browser." : "La geolocalizzazione non è supportata dal tuo browser.");
