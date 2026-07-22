@@ -98,7 +98,62 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   const users = db.getUsers();
   const myCollaborators = users.filter(u => u.role === 'collaboratore' && u.invitedBy === user.id);
 
-  // Dynamic Geocoding from Address using Nominatim
+  const [geoSuggestions, setGeoSuggestions] = useState([]);
+  const [isGeoLoading, setIsGeoLoading] = useState(false);
+  const [geoDetails, setGeoDetails] = useState('');
+
+  // Fetch address suggestions with Province and Region details from Nominatim
+  const handleFetchAddressSuggestions = async (query) => {
+    if (!query || query.trim().length < 2) {
+      setGeoSuggestions([]);
+      return;
+    }
+    setIsGeoLoading(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(query.trim())}&limit=5`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const formattedList = data.map(item => {
+          const addr = item.address || {};
+          const town = addr.city || addr.town || addr.village || addr.municipality || item.display_name.split(',')[0];
+          const county = addr.county || addr.province || '';
+          const state = addr.state || '';
+          
+          let provinceCode = '';
+          if (county) {
+            provinceCode = county.replace(/Provincia di /i, '').substring(0, 2).toUpperCase();
+          }
+          
+          const label = provinceCode ? `${town} (${provinceCode})` : town;
+          const fullSubtitle = [state, 'Italia'].filter(Boolean).join(', ');
+
+          return {
+            label,
+            fullTitle: `${label}, ${fullSubtitle}`,
+            lat: parseFloat(item.lat).toFixed(4),
+            lng: parseFloat(item.lon).toFixed(4)
+          };
+        });
+        setGeoSuggestions(formattedList);
+      } else {
+        setGeoSuggestions([]);
+      }
+    } catch (e) {
+      console.error("Suggestions fetch error:", e);
+    } finally {
+      setIsGeoLoading(false);
+    }
+  };
+
+  const handleSelectGeoSuggestion = (item) => {
+    setNewLocation(item.label);
+    setNewLat(item.lat);
+    setNewLng(item.lng);
+    setGeoDetails(`${item.fullTitle} • GPS: ${item.lat}, ${item.lng}`);
+    setGeoSuggestions([]);
+  };
+
+  // Dynamic Geocoding fallback
   const handleGeocode = async (address) => {
     if (!address || address.trim().length < 2) return null;
     try {
@@ -556,7 +611,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="form-group" style={{ position: 'relative' }}>
             <label className="form-label">Comune / Indirizzo dell'Evento</label>
             <input 
               type="text" 
@@ -565,14 +620,58 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
               value={newLocation}
               onChange={(e) => {
                 setNewLocation(e.target.value);
-                handleGeocode(e.target.value);
+                handleFetchAddressSuggestions(e.target.value);
               }}
-              onBlur={(e) => handleGeocode(e.target.value)}
+              onBlur={() => setTimeout(() => setGeoSuggestions([]), 250)}
             />
+
+            {/* Live Autocomplete Dropdown List with Province */}
+            {geoSuggestions.length > 0 && (
+              <div 
+                className="glass-panel animate-fade-in" 
+                style={{ 
+                  position: 'absolute', 
+                  top: '100%', 
+                  left: 0, 
+                  right: 0, 
+                  zIndex: 200, 
+                  background: 'var(--bg-secondary)', 
+                  border: '1px solid var(--border-glass)', 
+                  borderRadius: '8px', 
+                  boxShadow: 'var(--shadow-md)',
+                  marginTop: '4px',
+                  maxHeight: '220px',
+                  overflowY: 'auto'
+                }}
+              >
+                {geoSuggestions.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => handleSelectGeoSuggestion(item)}
+                    style={{ 
+                      padding: '10px 14px', 
+                      cursor: 'pointer', 
+                      borderBottom: idx < geoSuggestions.length - 1 ? '1px solid var(--border-glass)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <div>
+                      <strong style={{ color: 'var(--text-primary)', display: 'block' }}>📍 {item.label}</strong>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.fullTitle}</span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>Seleziona ✓</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{ marginTop: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span>📍</span>
               <span>
-                <strong>Posizione GPS Rilevata Automaticamente:</strong> Lat: {newLat}, Lng: {newLng}
+                <strong>Posizione Mappa GPS:</strong> {geoDetails || `${newLocation || 'Milano'} (Lat: ${newLat}, Lng: ${newLng})`}
               </span>
             </div>
           </div>
