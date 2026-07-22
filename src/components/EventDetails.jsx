@@ -73,23 +73,27 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
     setEditSuccess('');
   }, [event]);
 
-  // Geocoding on edit address blur
+  // Geocoding on edit address
   const handleEditGeocode = async (address) => {
-    if (!address || address.trim().length < 3) return;
+    if (!address || address.trim().length < 2) return null;
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&q=${encodeURIComponent(address)}&limit=1`);
       const data = await response.json();
       if (data && data.length > 0) {
-        setEditLat(parseFloat(data[0].lat).toFixed(4));
-        setEditLng(parseFloat(data[0].lon).toFixed(4));
+        const latStr = parseFloat(data[0].lat).toFixed(4);
+        const lngStr = parseFloat(data[0].lon).toFixed(4);
+        setEditLat(latStr);
+        setEditLng(lngStr);
+        return { lat: latStr, lng: lngStr };
       }
     } catch (e) {
       console.error("Geocoding failed:", e);
     }
+    return null;
   };
 
   // Save changes handler
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     setEditError('');
     setEditSuccess('');
@@ -99,10 +103,18 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
       return;
     }
 
+    let currentLat = editLat;
+    let currentLng = editLng;
+    const geoRes = await handleEditGeocode(editLocation);
+    if (geoRes) {
+      currentLat = geoRes.lat;
+      currentLng = geoRes.lng;
+    }
+
     // Proximity alert: check if there's already any event within 30 km on the same day (excluding itself)
     const sameDayEvents = db.getEvents().filter(evt => evt.date === editDate && evt.id !== event.id);
     const nearbyConflict = sameDayEvents.find(evt => {
-      const dist = getDistance(parseFloat(editLat), parseFloat(editLng), evt.gps.lat, evt.gps.lng);
+      const dist = getDistance(parseFloat(currentLat), parseFloat(currentLng), evt.gps.lat, evt.gps.lng);
       return dist <= 30;
     });
 

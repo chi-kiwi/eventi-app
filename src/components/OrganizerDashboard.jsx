@@ -100,21 +100,25 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
 
   // Dynamic Geocoding from Address using Nominatim
   const handleGeocode = async (address) => {
-    if (!address || address.trim().length < 3) return;
+    if (!address || address.trim().length < 2) return null;
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&q=${encodeURIComponent(address)}&limit=1`);
       const data = await response.json();
       if (data && data.length > 0) {
-        setNewLat(parseFloat(data[0].lat).toFixed(4));
-        setNewLng(parseFloat(data[0].lon).toFixed(4));
+        const latStr = parseFloat(data[0].lat).toFixed(4);
+        const lngStr = parseFloat(data[0].lon).toFixed(4);
+        setNewLat(latStr);
+        setNewLng(lngStr);
+        return { lat: latStr, lng: lngStr };
       }
     } catch (e) {
       console.error("Geocoding failed:", e);
     }
+    return null;
   };
 
   // Handle Event Creation
-  const handleCreateEvent = (e) => {
+  const handleCreateEvent = async (e) => {
     e.preventDefault();
     setFormWarning('');
     setFormSuccess('');
@@ -122,6 +126,15 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
     if (!newTitle || !newDesc || !newDate || !newTime || !newLocation) {
       setFormWarning("Per favore, compila tutti i campi fondamentali.");
       return;
+    }
+
+    // Auto geocode location to get exact lat/lng
+    let currentLat = newLat;
+    let currentLng = newLng;
+    const geoRes = await handleGeocode(newLocation);
+    if (geoRes) {
+      currentLat = geoRes.lat;
+      currentLng = geoRes.lng;
     }
 
     const eventData = {
@@ -544,36 +557,23 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Indirizzo / Luogo</label>
+            <label className="form-label">Comune / Indirizzo dell'Evento</label>
             <input 
               type="text" 
               className="form-input" 
-              placeholder="es. Milano, Piazza Duomo" 
+              placeholder="es. Cuggiono, Legnano, Milano, Oleggio..." 
               value={newLocation}
-              onChange={(e) => setNewLocation(e.target.value)}
+              onChange={(e) => {
+                setNewLocation(e.target.value);
+                handleGeocode(e.target.value);
+              }}
               onBlur={(e) => handleGeocode(e.target.value)}
             />
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Digitando la città/via, le coordinate GPS qui sotto verranno rilevate in automatico!</span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">GPS Latitudine</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                value={newLat}
-                onChange={(e) => setNewLat(e.target.value)}
-              />
-            </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">GPS Longitudine</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                value={newLng}
-                onChange={(e) => setNewLng(e.target.value)}
-              />
+            <div style={{ marginTop: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>📍</span>
+              <span>
+                <strong>Posizione GPS Rilevata Automaticamente:</strong> Lat: {newLat}, Lng: {newLng}
+              </span>
             </div>
           </div>
 
