@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Heart, Check, Users, MapPin, Calendar, Award, UserPlus, Shield, Sparkles, MessageSquare, Plus, AlertCircle, Trash2 } from 'lucide-react';
 import { db, getDistance } from '../services/db';
+import { searchItalianComuni } from '../services/comuni';
 
 export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   const [dashTab, setDashTab] = useState('stats'); // stats / create / collaborators
@@ -102,22 +103,31 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
   const [isGeoLoading, setIsGeoLoading] = useState(false);
   const [geoDetails, setGeoDetails] = useState('');
 
-  // Fetch address suggestions with Province and Region details from Nominatim
+  // Fetch address suggestions with Province and Region details
   const handleFetchAddressSuggestions = async (query) => {
     if (!query || query.trim().length < 2) {
       setGeoSuggestions([]);
       return;
     }
+
+    // 1. Instant local search in Italian towns & provinces index
+    const localMatches = searchItalianComuni(query);
+    if (localMatches.length > 0) {
+      setGeoSuggestions(localMatches);
+      return;
+    }
+
+    // 2. Remote geocoding strictly within Italy
     setIsGeoLoading(true);
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query.trim())}&limit=6`, {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(query.trim() + ', Italia')}&limit=5`, {
         headers: { 'User-Agent': 'EventiApp/1.0 (admin@eventiapp.com)' }
       });
       const data = await response.json();
       if (data && Array.isArray(data) && data.length > 0) {
         const formattedList = data.map(item => {
           const addr = item.address || {};
-          const town = addr.village || addr.town || addr.city || addr.municipality || addr.suburb || item.display_name.split(',')[0];
+          const town = addr.village || addr.town || addr.city || addr.municipality || item.display_name.split(',')[0];
           const county = addr.county || addr.province || '';
           const state = addr.state || '';
           
@@ -129,7 +139,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
           }
           
           const label = provinceCode ? `${town} (${provinceCode})` : town;
-          const fullSubtitle = [state, addr.country || 'Italia'].filter(Boolean).join(', ');
+          const fullSubtitle = [state, 'Italia'].filter(Boolean).join(', ');
 
           return {
             label,
