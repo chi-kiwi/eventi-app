@@ -1,6 +1,7 @@
 // Database dei comuni italiani principali e delle province per ricerca istantanea e geolocalizzazione precisa
 
 export const COMUNI_ITALIA = [
+  { name: "Comignago", prov: "NO", region: "Piemonte", lat: 45.7166, lng: 8.5605 },
   { name: "Paruzzaro", prov: "NO", region: "Piemonte", lat: 45.7502, lng: 8.5176 },
   { name: "Oleggio", prov: "NO", region: "Piemonte", lat: 45.5982, lng: 8.6369 },
   { name: "Cuggiono", prov: "MI", region: "Lombardia", lat: 45.5083, lng: 8.8167 },

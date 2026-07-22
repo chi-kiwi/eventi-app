@@ -173,13 +173,30 @@ export default function App() {
     setSelectedEvent({ ...event, views: (event.views || 0) + 1 });
   };
 
+  const [activeChatTarget, setActiveChatTarget] = useState(null);
+
   const handleStartChat = (eventId, organizerId) => {
     if (!currentUser) return;
+    const eventObj = events.find(e => e.id === eventId);
+    const users = db.getUsers();
+    const orgObj = users.find(u => u.id === organizerId);
+    const orgName = orgObj ? `${orgObj.name} ${orgObj.cognome}` : 'Organizzatore';
+    const eventTitle = eventObj ? eventObj.title : 'Evento';
+
     // Send a first contact message if no message exists
     const messages = db.getChatMessages(eventId, currentUser.id, organizerId);
     if (messages.length === 0) {
-      db.sendMessage(eventId, currentUser.id, organizerId, "Salve! Vorrei chiedervi alcune informazioni su questo evento.");
+      db.sendMessage(eventId, currentUser.id, organizerId, `Salve! Vorrei chiedervi alcune informazioni sull'evento "${eventTitle}".`);
     }
+
+    const targetChat = {
+      eventId,
+      otherUserId: organizerId,
+      otherUserName: orgName,
+      eventTitle
+    };
+
+    setActiveChatTarget(targetChat);
     setActiveTab('chats');
     setSelectedEvent(null);
   };
@@ -565,7 +582,7 @@ export default function App() {
 
               {/* TAB: CHATS */}
               {activeTab === 'chats' && (
-                <ChatTab user={currentUser} />
+                <ChatTab user={currentUser} initialActiveChat={activeChatTarget} />
               )}
 
               {/* TAB: ORGANIZER DASHBOARD */}

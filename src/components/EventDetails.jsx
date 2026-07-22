@@ -839,15 +839,37 @@ END:VCALENDAR`;
         </div>
 
         {/* Contact Organizer Chat */}
-        {user && user.id !== event.organizerId && (
-          <button 
-            className="btn btn-secondary"
-            onClick={() => onStartChat(event.id, event.organizerId)}
-            style={{ display: 'flex', justifyContent: 'center', gap: '8px', borderStyle: 'dashed' }}
-          >
-            <MessageSquare size={18} color="var(--accent-primary)" />
-            <span>{language === 'en' ? "Ask the organizers in private" : "Chiedi in privato agli organizzatori"}</span>
-          </button>
+        {(!user || user.id !== event.organizerId) && (
+          <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <MessageSquare size={20} color="var(--accent-primary)" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                  {language === 'en' ? "Private Organizer Chat" : "Chat Privata con l'Organizzatore"}
+                </h4>
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  {language === 'en' ? "Have questions about tickets, parking or info? Ask directly in private!" : "Hai dubbi su parcheggi, orari o info? Invia un messaggio diretto in privato!"}
+                </p>
+              </div>
+            </div>
+            
+            <button 
+              className="btn btn-primary"
+              onClick={() => {
+                if (!user) {
+                  alert(language === 'en' ? "Please log in to start a private chat with the organizer." : "Accedi o registrati per iniziare una chat privata con l'organizzatore.");
+                  return;
+                }
+                onStartChat(event.id, event.organizerId);
+              }}
+              style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontSize: '13px' }}
+            >
+              <MessageSquare size={16} />
+              <span>{language === 'en' ? "Start Private Chat" : "💬 Apri Chat Privata con l'Organizzatore"}</span>
+            </button>
+          </div>
         )}
 
         {/* Bacheca della Community */}

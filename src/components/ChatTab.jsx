@@ -2,12 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Send, ArrowLeft, Info } from 'lucide-react';
 import { db } from '../services/db';
 
-export default function ChatTab({ user }) {
+export default function ChatTab({ user, initialActiveChat }) {
   const [conversations, setConversations] = useState([]);
-  const [activeChat, setActiveChat] = useState(null); // { eventId, otherUserId, otherUserName, eventTitle }
+  const [activeChat, setActiveChat] = useState(initialActiveChat || null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (initialActiveChat) {
+      setActiveChat(initialActiveChat);
+    }
+  }, [initialActiveChat]);
 
   useEffect(() => {
     if (!user) return;
