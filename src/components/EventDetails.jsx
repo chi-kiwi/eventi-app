@@ -176,15 +176,12 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
 
     loadCommunityData();
 
-    // Auto-refresh polling every 2 seconds
-    const interval = setInterval(loadCommunityData, 2000);
+    // Auto-refresh polling every 1 second
+    const interval = setInterval(loadCommunityData, 1000);
 
-    const handleStorage = (e) => {
-      if (e.key === 'evt_community_messages') {
-        loadCommunityData();
-      }
-    };
-    window.addEventListener('storage', handleStorage);
+    const handleSync = () => loadCommunityData();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('evt_community_updated', handleSync);
 
     if (event.gps) {
       fetchLiveWeather(event.gps.lat, event.gps.lng).then(data => setLiveWeatherData(data));
@@ -192,7 +189,8 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('evt_community_updated', handleSync);
     };
   }, [event.id, event.gps]);
 

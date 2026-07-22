@@ -26,18 +26,16 @@ export default function ChatTab({ user, initialActiveChat }) {
     };
 
     loadChatData();
-    const interval = setInterval(loadChatData, 2000);
+    const interval = setInterval(loadChatData, 1000);
 
-    const handleStorage = (e) => {
-      if (e.key === 'evt_messages') {
-        loadChatData();
-      }
-    };
-    window.addEventListener('storage', handleStorage);
+    const handleSync = () => loadChatData();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('evt_chat_updated', handleSync);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('evt_chat_updated', handleSync);
     };
   }, [user, activeChat]);
 

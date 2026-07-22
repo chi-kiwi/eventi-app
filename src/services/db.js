@@ -90,6 +90,36 @@ export function getDistance(lat1, lon1, lat2, lon2) {
   return d;
 }
 
+// Setup global BroadcastChannel for multi-tab / multi-window real-time sync
+let syncChannel = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    syncChannel = new BroadcastChannel('evt_realtime_sync_v1');
+    syncChannel.onmessage = (event) => {
+      const { type, data } = event.data || {};
+      if (type === 'NEW_COMMUNITY_MESSAGE') {
+        const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
+        if (!all.some(m => m.id === data.id)) {
+          all.push(data);
+          localStorage.setItem("evt_community_messages", JSON.stringify(all));
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new CustomEvent('evt_community_updated'));
+        }
+      } else if (type === 'NEW_PRIVATE_MESSAGE') {
+        const msgs = JSON.parse(localStorage.getItem("evt_messages") || "[]");
+        if (!msgs.some(m => m.id === data.id)) {
+          msgs.push(data);
+          localStorage.setItem("evt_messages", JSON.stringify(msgs));
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new CustomEvent('evt_chat_updated'));
+        }
+      }
+    };
+  }
+} catch (e) {
+  console.warn("BroadcastChannel initialization notice:", e);
+}
+
 // Database wrapper
 class LocalDB {
   constructor() {
@@ -657,7 +687,7 @@ class LocalDB {
   addCommunityMessage(eventId, userId, userName, userAvatar, text) {
     const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
     const newMessage = {
-      id: "cm_" + Date.now(),
+      id: "cm_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
       eventId,
       userId,
       userName,
@@ -667,6 +697,16 @@ class LocalDB {
     };
     all.push(newMessage);
     localStorage.setItem("evt_community_messages", JSON.stringify(all));
+
+    if (syncChannel) {
+      try {
+        syncChannel.postMessage({ type: 'NEW_COMMUNITY_MESSAGE', data: newMessage });
+      } catch (e) { }
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('evt_community_updated'));
+    }
 
     // Award +2 XP to the user for contributing to the community board
     const users = this.getUsers();
@@ -809,7 +849,7 @@ class LocalDB {
   sendMessage(eventId, senderId, receiverId, text) {
     const msgs = this.getMessages();
     const newMessage = {
-      id: "msg_" + Date.now(),
+      id: "msg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
       eventId,
       senderId,
       receiverId,
@@ -818,6 +858,49 @@ class LocalDB {
     };
     msgs.push(newMessage);
     this.saveMessages(msgs);
+
+    if (syncChannel) {
+      try {
+        syncChannel.postMessage({ type: 'NEW_PRIVATE_MESSAGE', data: newMessage });
+      } catch (e) { }
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('evt_chat_updated'));
+    }
+
+    // Auto-reply simulation if sending to organizer (org_1)
+    if (receiverId === 'org_1' && senderId !== 'org_1') {
+      setTimeout(() => {
+        const events = this.getEvents();
+        const evt = events.find(e => e.id === eventId);
+        const eventTitle = evt ? evt.title : 'Evento';
+        const autoText = `Ciao! Grazie per averci scritto. In merito a "${eventTitle}", ti confermo che l'evento è confermato e che trovi tutte le info aggiornate nella scheda! 😊`;
+        
+        const currentMsgs = this.getMessages();
+        const replyMsg = {
+          id: "msg_reply_" + Date.now(),
+          eventId,
+          senderId: 'org_1',
+          receiverId: senderId,
+          message: autoText,
+          timestamp: new Date().toISOString()
+        };
+        currentMsgs.push(replyMsg);
+        this.saveMessages(currentMsgs);
+
+        if (syncChannel) {
+          try {
+            syncChannel.postMessage({ type: 'NEW_PRIVATE_MESSAGE', data: replyMsg });
+          } catch (e) { }
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new CustomEvent('evt_chat_updated'));
+        }
+      }, 1500);
+    }
+
     return newMessage;
   }
 
