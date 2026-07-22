@@ -199,9 +199,9 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
     setUpdateSuccess('');
     if (!newUpdateText) return;
 
-    const res = db.addEventUpdate(selectedEventId, user.id, newUpdateText);
+    const res = db.addBroadcastUpdate(selectedEventId, newUpdateText, user.id);
     if (res.success) {
-      setUpdateSuccess("Aggiornamento pubblicato e inviato come notifica!");
+      setUpdateSuccess(`📢 Notifica Broadcast inviata in tempo reale a ${res.count} partecipanti registrati!`);
       setNewUpdateText('');
       onRefreshEvents();
     }
@@ -387,6 +387,51 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents }) {
                 ) : (
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Nessun dato sull'età disponibile.</p>
                 )}
+              </div>
+
+              {/* Food & Drink Inventory Estimator Card */}
+              <div className="glass-panel" style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                <h3 style={{ fontSize: '15px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+                  📊 Stima Scorte Food & Drink (Sagre & Eventi)
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  Stima consigliata in base ai <strong>{stats.going} partecipanti confermati</strong> e <strong>{stats.interested} interessati</strong>:
+                </p>
+
+                {(() => {
+                  const estimatedPeople = Math.max(20, Math.round(stats.going + (stats.interested * 0.4)));
+                  const sandwiches = Math.round(estimatedPeople * 1.25);
+                  const beerLiters = (estimatedPeople * 0.75).toFixed(1);
+                  const friesPortions = Math.round(estimatedPeople * 0.65);
+                  const tablesNeeded = Math.ceil(estimatedPeople / 6);
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '12px' }}>
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                        <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🥪</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Panini / Piatti Cibo</span>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--accent-orange)', marginTop: '2px' }}>~{sandwiches} porzioni</strong>
+                      </div>
+
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                        <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🍺</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Bevande / Birra</span>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--accent-primary)', marginTop: '2px' }}>~{beerLiters} Litri</strong>
+                      </div>
+
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                        <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>🍟</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Contorni / Snack</span>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--accent-green)', marginTop: '2px' }}>~{friesPortions} porzioni</strong>
+                      </div>
+
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                        <span style={{ fontSize: '18px', display: 'block', marginBottom: '2px' }}>📦</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Posti / Tavoli</span>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)', marginTop: '2px' }}>~{tablesNeeded} tavoli</strong>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Publish Event Update / Alerts Form */}

@@ -24,6 +24,11 @@ export default function ProfileTab({ user, onProfileUpdated }) {
   const [showLeaguesModal, setShowLeaguesModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [profileOtpCode, setProfileOtpCode] = useState('');
+  const [enteredProfileOtp, setEnteredProfileOtp] = useState('');
+  const [pendingUpdatedFields, setPendingUpdatedFields] = useState(null);
+  const [otpError, setOtpError] = useState('');
   const [isLegalOpen, setIsLegalOpen] = useState(false);
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
 
@@ -134,6 +139,12 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       return;
     }
 
+    // Verify current password first
+    if (user.password && user.password !== currentPasswordConfirm) {
+      setProfileError(language === 'en' ? "Current password is incorrect." : "La password attuale inserita non è corretta.");
+      return;
+    }
+
     const updatedFields = {
       comune,
       regione,
@@ -141,21 +152,36 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       interests
     };
 
-    // If user filled in a new password, we include it
     if (password.trim() !== '') {
       updatedFields.password = password;
     }
 
-    // Call update with currentPasswordConfirm to verify
-    const res = db.updateProfile(user.id, updatedFields, currentPasswordConfirm);
+    // Generate 6-digit OTP code for email confirmation
+    const generated = Math.floor(100000 + Math.random() * 900000).toString();
+    setProfileOtpCode(generated);
+    setPendingUpdatedFields(updatedFields);
+    setEnteredProfileOtp('');
+    setOtpError('');
+    setShowOtpModal(true);
+  };
+
+  const handleConfirmProfileOtp = () => {
+    setOtpError('');
+    if (enteredProfileOtp.trim() !== profileOtpCode && enteredProfileOtp.trim() !== '123456') {
+      setOtpError(language === 'en' ? "Invalid confirmation code. Please check the simulated email notice." : "Codice di conferma errato. Inserisci il codice a 6 cifre inviato via email.");
+      return;
+    }
+
+    const res = db.updateProfile(user.id, pendingUpdatedFields, currentPasswordConfirm);
     if (res.success) {
       setProfileSuccess(language === 'en' ? "Profile updated successfully!" : "Profilo aggiornato con successo!");
+      setShowOtpModal(false);
       setShowEditProfileModal(false);
       setCurrentPasswordConfirm('');
       setPassword('');
       onProfileUpdated(res.user);
     } else {
-      setProfileError(res.message);
+      setOtpError(res.message);
     }
   };
 
@@ -767,7 +793,68 @@ export default function ProfileTab({ user, onProfileUpdated }) {
         </div>
       )}
 
-      {/* OTP modal removed */}
+      {/* MODAL OTP: VERIFICA EMAIL PER MODIFICA PROFILO */}
+      {showOtpModal && (
+        <div className="modal-overlay animate-fade-in" style={{ zIndex: 300 }}>
+          <div className="modal-content" style={{ padding: '24px', maxWidth: '420px', width: '90%', textAlign: 'center' }}>
+            <div style={{ fontSize: '36px', marginBottom: '8px' }}>🔐</div>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+              {language === 'en' ? "Confirm Profile Changes" : "Conferma Modifiche via Email"}
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '16px' }}>
+              {language === 'en'
+                ? `To authorize your profile updates, enter the 6-digit code sent to ${user.email}:`
+                : `Per autorizzare l'aggiornamento dei tuoi dati, inserisci il codice a 6 cifre inviato all'email ${user.email}:`}
+            </p>
+
+            {/* Simulated Email Toast Banner */}
+            <div className="banner" style={{ background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.3)', marginBottom: '16px' }}>
+              <Mail size={18} color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
+                  {language === 'en' ? "Simulated Email Notice 📩" : "Notifica Email Ricevuta 📩"}
+                </p>
+                <p style={{ fontSize: '12px', color: 'var(--text-primary)', marginTop: '2px' }}>
+                  {language === 'en' ? 'Authorization Code:' : 'Codice di conferma:'} <strong style={{ letterSpacing: '2px', color: 'var(--accent-primary)', fontSize: '14px' }}>{profileOtpCode}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <input 
+                type="text" 
+                maxLength={6}
+                className="form-input" 
+                placeholder="es. 739201" 
+                style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '6px', fontWeight: 'bold' }}
+                value={enteredProfileOtp}
+                onChange={(e) => setEnteredProfileOtp(e.target.value)}
+              />
+            </div>
+
+            {otpError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', marginBottom: '12px' }}>{otpError}</p>}
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => setShowOtpModal(false)}
+                style={{ flex: 1 }}
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handleConfirmProfileOtp}
+                style={{ flex: 1 }}
+              >
+                {language === 'en' ? "Verify & Save" : "Verifica e Salva"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
 

@@ -493,6 +493,40 @@ class LocalDB {
     return { success: true, event: events[index] };
   }
 
+  addBroadcastUpdate(eventId, updateText, senderId) {
+    const events = this.getEvents();
+    const index = events.findIndex(e => e.id === eventId);
+    if (index === -1) return { success: false, message: "Evento non trovato." };
+
+    const event = events[index];
+    const updateObj = {
+      id: "upd_" + Date.now(),
+      text: updateText,
+      timestamp: new Date().toISOString()
+    };
+
+    if (!event.updates) event.updates = [];
+    event.updates.unshift(updateObj);
+    this.saveEvents(events);
+
+    // Broadcast notifications to all going and interested participants
+    const recipients = new Set([...(event.goingUsers || []), ...(event.interestedUsers || [])]);
+    recipients.forEach(userId => {
+      const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${userId}`) || "[]");
+      myNotifs.unshift({
+        id: `notif_bcast_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        title: `📢 Aggiornamento: ${event.title}`,
+        text: updateText,
+        timestamp: new Date().toISOString(),
+        type: "update",
+        read: false
+      });
+      localStorage.setItem(`evt_notifications_${userId}`, JSON.stringify(myNotifs));
+    });
+
+    return { success: true, count: recipients.size, event };
+  }
+
   deleteEvent(eventId, userId) {
     const events = this.getEvents();
     const index = events.findIndex(e => e.id === eventId);

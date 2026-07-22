@@ -12,31 +12,40 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
 
   return (
     <header className="app-header" style={{ position: 'relative' }}>
-      <div className="app-title" style={{ cursor: 'pointer' }} onClick={() => onTabChange('explore')}>
-        <span>🎟️ EventiApp</span>
+      <div className="app-title" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => onTabChange('explore')}>
+        <span style={{ fontSize: '18px', lineHeight: 1 }}>🎟️</span>
+        <span style={{ 
+          fontSize: '18px', 
+          fontWeight: 800, 
+          background: 'var(--gradient-primary)', 
+          WebkitBackgroundClip: 'text', 
+          WebkitTextFillColor: 'transparent',
+          letterSpacing: '-0.03em' 
+        }}>EventiApp</span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {/* Points Badge */}
             <div 
               onClick={() => onTabChange('profile')} 
+              className="header-badge-pill"
               style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '4px', 
                 background: 'var(--bg-tertiary)', 
-                padding: '6px 12px', 
+                padding: '4px 8px', 
                 borderRadius: '20px', 
                 cursor: 'pointer',
                 border: '1px solid var(--border-glass)',
                 boxShadow: 'var(--shadow-sm)'
               }}
             >
-              <Award size={14} color="var(--accent-orange)" />
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {user.points} pt
+              <Award size={13} color="var(--accent-orange)" />
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                {user.points}<span className="points-label"> pt</span>
               </span>
             </div>
 
@@ -46,27 +55,27 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
               style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '6px', 
+                gap: '4px', 
                 background: 'var(--bg-tertiary)', 
-                padding: '4px 12px 4px 4px', 
+                padding: '3px 8px 3px 3px', 
                 borderRadius: '20px', 
                 cursor: 'pointer',
                 border: '1px solid var(--border-glass)',
-                height: '32px'
+                height: '28px'
               }}
             >
               {user.avatar ? (
                 <img 
                   src={user.avatar} 
                   alt="Avatar" 
-                  style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
+                  style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
                 />
               ) : (
-                <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <User size={12} color="var(--text-secondary)" />
+                <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={11} color="var(--text-secondary)" />
                 </div>
               )}
-              <span className="header-user-name" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              <span className="header-user-name" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {user.name}
               </span>
               {user.premium && (
@@ -84,18 +93,19 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
               style={{
                 background: 'var(--bg-tertiary)',
                 borderRadius: '50%',
-                width: '32px',
-                height: '32px',
+                width: '28px',
+                height: '28px',
                 border: '1px solid var(--border-glass)',
                 cursor: 'pointer',
                 color: unreadCount > 0 ? 'var(--accent-primary)' : 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                position: 'relative'
+                position: 'relative',
+                padding: 0
               }}
             >
-              {unreadCount > 0 ? <BellRing size={18} className="animate-fade-in" color="var(--accent-primary)" /> : <Bell size={18} color="var(--text-muted)" />}
+              {unreadCount > 0 ? <BellRing size={15} className="animate-fade-in" color="var(--accent-primary)" /> : <Bell size={15} color="var(--text-muted)" />}
               {unreadCount > 0 && (
                 <span 
                   style={{ 

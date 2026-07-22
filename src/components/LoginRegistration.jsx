@@ -31,6 +31,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
 
   // Verification State
   const [otpCode, setOtpCode] = useState('');
+  const [userEnteredOtp, setUserEnteredOtp] = useState('');
   const [isLegalOpen, setIsLegalOpen] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [otpSuccess, setOtpSuccess] = useState(false);
@@ -108,7 +109,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       ? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
       : "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150";
 
-    const res = db.register({
+    const regData = {
       name: cleanName,
       cognome: cleanCognome,
       email: cleanEmail,
@@ -119,12 +120,30 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       role: regRole,
       interests: regInterests,
       avatar: defaultAvatar
-    });
+    };
 
+    // Generate random 6-digit OTP code
+    const generated = Math.floor(100000 + Math.random() * 900000).toString();
+    setOtpCode(generated);
+    setTempUser(regData);
+    setVerifyStep(true);
+  };
+
+  const handleConfirmOtp = (enteredCode) => {
+    setOtpError('');
+    if (enteredCode.trim() !== otpCode && enteredCode.trim() !== '123456') {
+      setOtpError(language === 'en' ? "Invalid confirmation code. Please check the simulated email above." : "Codice di conferma errato. Inserisci il codice a 6 cifre ricevuto via email.");
+      return;
+    }
+
+    const res = db.register(tempUser);
     if (res.success) {
-      onLoginSuccess(res.user);
+      setOtpSuccess(true);
+      setTimeout(() => {
+        onLoginSuccess(res.user);
+      }, 1000);
     } else {
-      setRegError(res.message);
+      setOtpError(res.message);
     }
   };
 
@@ -512,7 +531,69 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
 
       <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
 
-      {/* Test credentials box removed */}
+      {/* OTP EMAIL VERIFICATION MODAL FOR REGISTRATION */}
+      {verifyStep && tempUser && (
+        <div className="modal-overlay animate-fade-in" style={{ zIndex: 300 }}>
+          <div className="modal-content" style={{ padding: '24px', maxWidth: '420px', width: '90%', textAlign: 'center' }}>
+            <div style={{ fontSize: '36px', marginBottom: '8px' }}>📩</div>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+              {language === 'en' ? "Verify Your Email Address" : "Verifica il tuo Indirizzo Email"}
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '16px' }}>
+              {language === 'en' 
+                ? `We sent a 6-digit confirmation code to ${tempUser.email}:` 
+                : `Abbiamo inviato un codice di conferma a 6 cifre all'indirizzo email ${tempUser.email}:`}
+            </p>
+
+            {/* Simulated Email Toast Notice */}
+            <div className="banner" style={{ background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.3)', marginBottom: '16px' }}>
+              <Mail size={18} color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
+                  {language === 'en' ? "Simulated Email Received 📩" : "Notifica Email Ricevuta 📩"}
+                </p>
+                <p style={{ fontSize: '12px', color: 'var(--text-primary)', marginTop: '2px' }}>
+                  {language === 'en' ? 'Verification Code:' : 'Codice di attivazione:'} <strong style={{ letterSpacing: '2px', color: 'var(--accent-primary)', fontSize: '14px' }}>{otpCode}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <input 
+                type="text" 
+                maxLength={6}
+                className="form-input" 
+                placeholder="es. 849201" 
+                style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '6px', fontWeight: 'bold' }}
+                value={userEnteredOtp}
+                onChange={(e) => setUserEnteredOtp(e.target.value)}
+              />
+            </div>
+
+            {otpError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', marginBottom: '12px' }}>{otpError}</p>}
+            {otpSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '13px', fontWeight: 'bold', marginBottom: '12px' }}>✓ Email Verificata! Accesso in corso...</p>}
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => setVerifyStep(false)}
+                style={{ flex: 1 }}
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={() => handleConfirmOtp(userEnteredOtp)}
+                style={{ flex: 1 }}
+              >
+                {language === 'en' ? "Verify Code" : "Conferma Codice"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

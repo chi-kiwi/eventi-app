@@ -21,6 +21,8 @@ export default function MapTab({ events, onSelectEvent, user }) {
   const [radiusFilter, setRadiusFilter] = useState(50); // 10, 25, 50, 100 km
   const [weekendOnly, setWeekendOnly] = useState(false);
   const [onRoadNotification, setOnRoadNotification] = useState(null);
+  const [searchCityQuery, setSearchCityQuery] = useState('');
+  const [isSearchingCity, setIsSearchingCity] = useState(false);
 
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
@@ -207,6 +209,45 @@ export default function MapTab({ events, onSelectEvent, user }) {
     }
   };
 
+  const handleSearchCitySubmit = async (query) => {
+    if (!query || query.trim().length < 2) return;
+    setIsSearchingCity(true);
+    try {
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&q=${encodeURIComponent(query.trim())}&limit=1`);
+      const data = await resp.json();
+      if (data && data.length > 0) {
+        const coords = {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        };
+        const cityName = data[0].display_name.split(',')[0];
+        setUserLocationName(cityName);
+        setUserCoords(coords);
+
+        const nearbyEvents = events.filter(e => {
+          if (!e.gps) return false;
+          const dist = getDistance(coords.lat, coords.lng, e.gps.lat, e.gps.lng);
+          return dist <= radiusFilter;
+        });
+
+        if (nearbyEvents.length > 0) {
+          setOnRoadNotification({
+            location: cityName,
+            count: nearbyEvents.length,
+            category: nearbyEvents[0].category
+          });
+          setTimeout(() => setOnRoadNotification(null), 6000);
+        }
+      } else {
+        alert(language === 'en' ? "City not found. Try searching another town name." : "Città non trovata. Prova a cercare un altro comune.");
+      }
+    } catch (e) {
+      console.error("City search error:", e);
+    } finally {
+      setIsSearchingCity(false);
+    }
+  };
+
   const handleDetectRealLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -327,21 +368,52 @@ export default function MapTab({ events, onSelectEvent, user }) {
           </button>
         </div>
         
-        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>
-          {language === 'en' ? "Or select a reference area:" : "Oppure seleziona un'area di riferimento:"}
-        </p>
-        
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          {Object.keys(LOCATIONS).map(locName => (
-            <button
-              key={locName}
-              className={`tag-pill ${userLocationName === locName ? 'active' : ''}`}
-              onClick={() => handleLocationChange(locName)}
-              style={{ fontSize: '12px', padding: '6px 12px' }}
+        {/* Dynamic City Search Bar */}
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder={language === 'en' ? "🔍 Search any city or municipality in Italy..." : "🔍 Cerca qualsiasi città o comune in Italia..."}
+              value={searchCityQuery}
+              onChange={(e) => setSearchCityQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchCitySubmit(searchCityQuery)}
+              style={{ fontSize: '13px', flex: 1 }}
+            />
+            <button 
+              type="button" 
+              className="btn btn-primary" 
+              onClick={() => handleSearchCitySubmit(searchCityQuery)}
+              disabled={isSearchingCity}
+              style={{ width: 'auto', padding: '0 16px', fontSize: '13px', whiteSpace: 'nowrap' }}
             >
-              📍 {locName}
+              {isSearchingCity ? '...' : (language === 'en' ? "Search" : "Cerca")}
             </button>
-          ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '2px' }}>
+              {language === 'en' ? "Popular:" : "Città popolari:"}
+            </span>
+            {["Milano", "Saronno", "Monza", "Bergamo", "Oleggio", "Sondrio", "Roma", "Torino"].map(locName => (
+              <button
+                key={locName}
+                type="button"
+                className={`tag-pill ${userLocationName === locName ? 'active' : ''}`}
+                onClick={() => {
+                  setSearchCityQuery(locName);
+                  if (LOCATIONS[locName]) {
+                    handleLocationChange(locName);
+                  } else {
+                    handleSearchCitySubmit(locName);
+                  }
+                }}
+                style={{ fontSize: '11px', padding: '4px 10px' }}
+              >
+                📍 {locName}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>

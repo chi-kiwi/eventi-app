@@ -102,7 +102,7 @@ export default function App() {
   const [selectedRegion, setSelectedRegion] = useState('Tutti');
 
   const categories = [
-    "Tutti", "Salvati 📌", "Feste di paese", "Feste nei locali", "Musica", "Motori", "Escursioni", "Sport", 
+    "Tutti", "⚡ Stasera cosa faccio?", "Salvati 📌", "Feste di paese", "Feste nei locali", "Musica", "Motori", "Escursioni", "Sport", 
     "Mercatini", "Street food", "Bambini/Famiglie"
   ];
 
@@ -274,7 +274,9 @@ export default function App() {
                             e.desc.toLowerCase().includes(searchQuery.toLowerCase());
       
       let matchesCategory = false;
-      if (selectedCategory === 'Tutti') {
+      if (selectedCategory === '⚡ Stasera cosa faccio?') {
+        matchesCategory = e.date === todayStr;
+      } else if (selectedCategory === 'Tutti') {
         matchesCategory = true;
       } else if (selectedCategory === 'Salvati 📌') {
         matchesCategory = currentUser && (
