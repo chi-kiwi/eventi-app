@@ -668,6 +668,80 @@ class LocalDB {
     return { success: true, event, liked, xpAwarded, uploaderId: photo.uploaderId };
   }
 
+  async syncCloudCommunityMessages() {
+    try {
+      const res = await fetch('https://ntfy.sh/eventiapp_community_sync_951087c2/json?poll=1');
+      if (!res.ok) return;
+      const text = await res.text();
+      if (!text.trim()) return;
+      const lines = text.trim().split('\n').filter(Boolean);
+      const cloudMsgs = lines
+        .map(l => {
+          try { return JSON.parse(l); } catch(e) { return null; }
+        })
+        .filter(item => item && item.event === 'message' && item.message)
+        .map(item => {
+          try { return JSON.parse(item.message); } catch(e) { return null; }
+        })
+        .filter(m => m && m.id && m.eventId);
+
+      if (cloudMsgs.length > 0) {
+        const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
+        let updated = false;
+        cloudMsgs.forEach(m => {
+          if (!local.some(l => l.id === m.id)) {
+            local.push(m);
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem("evt_community_messages", JSON.stringify(local));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new CustomEvent('evt_community_updated'));
+          }
+        }
+      }
+    } catch (e) { }
+  }
+
+  async syncCloudPrivateMessages() {
+    try {
+      const res = await fetch('https://ntfy.sh/eventiapp_private_chat_951087c2/json?poll=1');
+      if (!res.ok) return;
+      const text = await res.text();
+      if (!text.trim()) return;
+      const lines = text.trim().split('\n').filter(Boolean);
+      const cloudMsgs = lines
+        .map(l => {
+          try { return JSON.parse(l); } catch(e) { return null; }
+        })
+        .filter(item => item && item.event === 'message' && item.message)
+        .map(item => {
+          try { return JSON.parse(item.message); } catch(e) { return null; }
+        })
+        .filter(m => m && m.id && m.eventId);
+
+      if (cloudMsgs.length > 0) {
+        const local = JSON.parse(localStorage.getItem("evt_messages") || "[]");
+        let updated = false;
+        cloudMsgs.forEach(m => {
+          if (!local.some(l => l.id === m.id)) {
+            local.push(m);
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem("evt_messages", JSON.stringify(local));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new CustomEvent('evt_chat_updated'));
+          }
+        }
+      }
+    } catch (e) { }
+  }
+
   getCommunityMessages(eventId) {
     const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
     const users = this.getUsers();
@@ -697,6 +771,15 @@ class LocalDB {
     };
     all.push(newMessage);
     localStorage.setItem("evt_community_messages", JSON.stringify(all));
+
+    // Post to cloud pub/sub for cross-device & cross-browser sync
+    try {
+      fetch('https://ntfy.sh/eventiapp_community_sync_951087c2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMessage)
+      }).catch(() => {});
+    } catch(e) {}
 
     if (syncChannel) {
       try {
@@ -858,6 +941,15 @@ class LocalDB {
     };
     msgs.push(newMessage);
     this.saveMessages(msgs);
+
+    // Post to cloud pub/sub for cross-device & cross-browser sync
+    try {
+      fetch('https://ntfy.sh/eventiapp_private_chat_951087c2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMessage)
+      }).catch(() => {});
+    } catch(e) {}
 
     if (syncChannel) {
       try {

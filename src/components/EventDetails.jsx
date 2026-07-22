@@ -171,15 +171,18 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
 
   useEffect(() => {
     const loadCommunityData = () => {
+      db.syncCloudCommunityMessages();
       setCommunityMessages(db.getCommunityMessages(event.id));
     };
 
     loadCommunityData();
 
-    // Auto-refresh polling every 1 second
-    const interval = setInterval(loadCommunityData, 1000);
+    // Auto-refresh polling every 1.5 seconds with cloud sync
+    const interval = setInterval(loadCommunityData, 1500);
 
-    const handleSync = () => loadCommunityData();
+    const handleSync = () => {
+      setCommunityMessages(db.getCommunityMessages(event.id));
+    };
     window.addEventListener('storage', handleSync);
     window.addEventListener('evt_community_updated', handleSync);
 

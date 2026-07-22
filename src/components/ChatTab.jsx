@@ -19,6 +19,7 @@ export default function ChatTab({ user, initialActiveChat }) {
     if (!user) return;
 
     const loadChatData = () => {
+      db.syncCloudPrivateMessages();
       setConversations(db.getChatsForUser(user.id));
       if (activeChat) {
         setMessages(db.getChatMessages(activeChat.eventId, user.id, activeChat.otherUserId));
@@ -26,9 +27,14 @@ export default function ChatTab({ user, initialActiveChat }) {
     };
 
     loadChatData();
-    const interval = setInterval(loadChatData, 1000);
+    const interval = setInterval(loadChatData, 1500);
 
-    const handleSync = () => loadChatData();
+    const handleSync = () => {
+      setConversations(db.getChatsForUser(user.id));
+      if (activeChat) {
+        setMessages(db.getChatMessages(activeChat.eventId, user.id, activeChat.otherUserId));
+      }
+    };
     window.addEventListener('storage', handleSync);
     window.addEventListener('evt_chat_updated', handleSync);
 
