@@ -794,7 +794,7 @@ class LocalDB {
     } catch (e) { }
   }
 
-  getCommunityMessages(eventId) {
+  getCommunityMessages(eventId, currentUserId = null) {
     const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
     const users = this.getUsers();
     const events = this.getEvents();
@@ -807,16 +807,51 @@ class LocalDB {
         const u = users.find(usr => String(usr.id) === String(m.userId));
         const isOrganizer = String(m.userId) === String(organizerId);
         const isCollaborator = u && u.role === 'collaboratore' && String(u.invitedBy) === String(organizerId);
+        const likes = Array.isArray(m.likes) ? m.likes : [];
+        const hasLiked = currentUserId ? likes.includes(currentUserId) : false;
+
         return {
           ...m,
           userName: u ? `${u.name} ${u.cognome}` : m.userName,
           userAvatar: u ? u.avatar : m.userAvatar,
           userRole: u ? u.role : 'utente',
           isOrganizer,
-          isCollaborator
+          isCollaborator,
+          likesCount: likes.length,
+          hasLiked
         };
       })
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  }
+
+  toggleCommunityMessageLike(messageId, userId) {
+    const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
+    const msgIndex = all.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return { success: false };
+
+    const msg = all[msgIndex];
+    if (!Array.isArray(msg.likes)) msg.likes = [];
+    const idx = msg.likes.indexOf(userId);
+    let liked = false;
+
+    if (idx === -1) {
+      msg.likes.push(userId);
+      liked = true;
+    } else {
+      msg.likes.splice(idx, 1);
+    }
+
+    localStorage.setItem("evt_community_messages", JSON.stringify(all));
+    try {
+      this.pushCommunityMessageToCloud(msg).catch(() => {});
+    } catch (e) { }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('evt_community_updated'));
+    }
+
+    return { success: true, liked, likesCount: msg.likes.length };
   }
 
   addCommunityMessage(eventId, userId, userName, userAvatar, text) {

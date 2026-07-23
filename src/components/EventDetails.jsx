@@ -184,7 +184,7 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
   useEffect(() => {
     const loadCommunityData = () => {
       db.syncCloudCommunityMessages();
-      setCommunityMessages(db.getCommunityMessages(event.id));
+      setCommunityMessages(db.getCommunityMessages(event.id, user?.id));
     };
 
     loadCommunityData();
@@ -193,7 +193,7 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
     const interval = setInterval(loadCommunityData, 1500);
 
     const handleSync = () => {
-      setCommunityMessages(db.getCommunityMessages(event.id));
+      setCommunityMessages(db.getCommunityMessages(event.id, user?.id));
     };
     window.addEventListener('storage', handleSync);
     window.addEventListener('evt_community_updated', handleSync);
@@ -354,6 +354,17 @@ END:VCALENDAR`;
     }
   };
 
+  const handleToggleCommunityLike = (msgId) => {
+    if (!user) {
+      alert("Accedi per mettere 'Mi Piace' ai post della community.");
+      return;
+    }
+    const res = db.toggleCommunityMessageLike(msgId, user.id);
+    if (res.success) {
+      setCommunityMessages(db.getCommunityMessages(event.id, user.id));
+    }
+  };
+
   const handlePostCommunityMessage = (e) => {
     e.preventDefault();
     if (!newMessageText.trim() || !user) return;
@@ -367,7 +378,7 @@ END:VCALENDAR`;
     );
 
     if (res.success) {
-      setCommunityMessages(db.getCommunityMessages(event.id));
+      setCommunityMessages(db.getCommunityMessages(event.id, user.id));
       setNewMessageText('');
 
       // Trigger user points sync in App.jsx
@@ -898,17 +909,58 @@ END:VCALENDAR`;
           </div>
         )}
 
-        {/* Bacheca della Community */}
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {t('community_board')}
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-            {t('community_sub')}
+        {/* Bacheca della Community - Stile Gruppo Facebook */}
+        <div className="glass-panel" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              👥 Discussione & Bacheca Partecipanti
+            </h3>
+            <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold', background: 'rgba(99, 102, 241, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>
+              {communityMessages.length} Post
+            </span>
+          </div>
+
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4', margin: 0 }}>
+            {language === 'en'
+              ? "Share thoughts, ask questions to organizers, or reply to attendees of this event!"
+              : "Scrivi un post sulla bacheca dell'evento, fai una domanda all'organizzatore o rispondi ai partecipanti!"}
           </p>
 
-          {/* Messages list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '320px', overflowY: 'auto', border: '1px solid var(--border-glass)', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.01)' }}>
+          {/* Form to submit community message - Facebook Post Box style */}
+          {user ? (
+            <form onSubmit={handlePostCommunityMessage} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <img 
+                  src={user.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"} 
+                  alt={user.name}
+                  style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder={language === 'en' ? "Write a post or ask a question..." : "Scrivi un post o fai una domanda..."} 
+                  value={newMessageText}
+                  onChange={(e) => setNewMessageText(e.target.value)}
+                  style={{ fontSize: '13px', flex: 1, borderRadius: '20px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '6px 18px', fontSize: '12px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>Pubblica Post 🚀</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '10px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                {language === 'en' ? "Log in to join the discussion." : "Accedi o registrati per pubblicare un post sulla bacheca dell'evento."}
+              </p>
+            </div>
+          )}
+
+          {/* Messages list - Facebook Post Cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', paddingRight: '2px' }}>
             {communityMessages.length > 0 ? (
               communityMessages.map((msg) => {
                 const canDeleteMsg = user && (
@@ -918,61 +970,108 @@ END:VCALENDAR`;
                 );
 
                 return (
-                  <div key={msg.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    {msg.userAvatar ? (
-                      <img 
-                        src={msg.userAvatar} 
-                        alt={msg.userName} 
-                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
-                      />
-                    ) : (
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <User size={16} color="var(--text-secondary)" />
-                      </div>
-                    )}
-                    
-                    <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{msg.userName}</span>
-                          {msg.isOrganizer && (
-                            <span style={{ fontSize: '9px', background: 'var(--gradient-primary)', color: 'white', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
-                              👑 Organizzatore
-                            </span>
-                          )}
-                          {msg.isCollaborator && (
-                            <span style={{ fontSize: '9px', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-primary)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
-                              ⭐ Staff
-                            </span>
-                          )}
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <div 
+                    key={msg.id} 
+                    className="glass-card"
+                    style={{ 
+                      padding: '14px', 
+                      borderRadius: '12px', 
+                      background: 'var(--bg-secondary)', 
+                      border: '1px solid var(--border-glass)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
+                  >
+                    {/* Post Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {msg.userAvatar ? (
+                          <img 
+                            src={msg.userAvatar} 
+                            alt={msg.userName} 
+                            style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
+                          />
+                        ) : (
+                          <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <User size={18} color="var(--text-secondary)" />
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{msg.userName}</span>
+                            {msg.isOrganizer && (
+                              <span style={{ fontSize: '9px', background: 'var(--gradient-primary)', color: 'white', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>
+                                👑 Organizzatore
+                              </span>
+                            )}
+                            {msg.isCollaborator && (
+                              <span style={{ fontSize: '9px', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-primary)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>
+                                ⭐ Staff
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '1px' }}>
+                            {new Date(msg.timestamp).toLocaleDateString()} alle {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          {canDeleteMsg && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCommunityMessage(msg.id)}
-                              style={{ background: 'none', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', opacity: 0.8, padding: '2px' }}
-                              title="Elimina messaggio"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
                         </div>
                       </div>
 
-                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{msg.text}</p>
+                      {canDeleteMsg && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCommunityMessage(msg.id)}
+                          style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title="Elimina post"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Post Content */}
+                    <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.5', margin: '4px 0 2px' }}>
+                      {msg.text}
+                    </p>
+
+                    {/* Post Footer Actions (Facebook style) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderTop: '1px solid var(--border-glass)', paddingTop: '8px', marginTop: '4px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleCommunityLike(msg.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          color: msg.hasLiked ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <span>{msg.hasLiked ? '👍' : '👍'} Mi Piace</span>
+                        {msg.likesCount > 0 && <span style={{ background: 'var(--bg-tertiary)', padding: '1px 6px', borderRadius: '10px', fontSize: '10px' }}>{msg.likesCount}</span>}
+                      </button>
 
                       {user && (
                         <button
                           type="button"
                           onClick={() => setNewMessageText(`@${msg.userName} `)}
-                          style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', padding: 0, marginTop: '4px' }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
                         >
-                          ↩ {language === 'en' ? "Reply" : "Rispondi"}
+                          💬 Rispondi
                         </button>
                       )}
                     </div>
@@ -980,32 +1079,13 @@ END:VCALENDAR`;
                 );
               })
             ) : (
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
-                {language === 'en' ? "No messages posted. Write the first post!" : "Nessun messaggio pubblicato. Scrivi il primo post!"}
-              </p>
+              <div style={{ textAlign: 'center', padding: '24px 16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>💬</span>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Nessun post sulla bacheca</p>
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Sii il primo a fare una domanda o pubblicare un post per questo evento!</p>
+              </div>
             )}
           </div>
-
-          {/* Form to submit community message */}
-          {user ? (
-            <form onSubmit={handlePostCommunityMessage} style={{ display: 'flex', gap: '8px' }}>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder={t('send_msg_placeholder')} 
-                value={newMessageText}
-                onChange={(e) => setNewMessageText(e.target.value)}
-                style={{ fontSize: '13px', height: '38px' }}
-              />
-              <button type="submit" className="btn btn-primary" style={{ width: 'auto', padding: '0 16px', fontSize: '13px' }}>
-                {t('send')}
-              </button>
-            </form>
-          ) : (
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-              {language === 'en' ? "Log in to post on the community board." : "Accedi per poter scrivere sulla bacheca."}
-            </p>
-          )}
         </div>
 
         {/* Updates published by Organizers/Collaborators */}
