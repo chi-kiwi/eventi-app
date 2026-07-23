@@ -676,20 +676,118 @@ class LocalDB {
     return { success: true, event, liked, xpAwarded, uploaderId: photo.uploaderId };
   }
 
-  syncCloudCommunityMessages() {
-    // Local storage & BroadcastChannel real-time sync trigger
+  // Real-time Cloud Sync for Community Messages
+  async syncCloudCommunityMessages() {
+    try {
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.messages)) {
+          const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
+          const localIds = new Set(local.map(m => m.id));
+          let hasNew = false;
+
+          data.messages.forEach(remoteMsg => {
+            if (!localIds.has(remoteMsg.id)) {
+              local.push(remoteMsg);
+              hasNew = true;
+            }
+          });
+
+          if (hasNew) {
+            local.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            localStorage.setItem("evt_community_messages", JSON.stringify(local));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('storage'));
+              window.dispatchEvent(new CustomEvent('evt_community_updated'));
+            }
+          }
+        }
+      }
+    } catch (e) { }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('evt_community_updated'));
     }
   }
 
-  syncCloudPrivateMessages() {
-    // Local storage & BroadcastChannel real-time sync trigger
+  async pushCommunityMessageToCloud(newMessage) {
+    try {
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', { cache: 'no-store' });
+      let currentMessages = [];
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.messages)) {
+          currentMessages = data.messages;
+        }
+      }
+      if (!currentMessages.some(m => m.id === newMessage.id)) {
+        currentMessages.push(newMessage);
+      }
+      await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: currentMessages })
+      });
+    } catch (e) { }
+  }
+
+  // Real-time Cloud Sync for Private Messages
+  async syncCloudPrivateMessages() {
+    try {
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ede9-7ee9-a9b5-a3a4ee973bdb', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.messages)) {
+          const local = this.getMessages();
+          const localIds = new Set(local.map(m => m.id));
+          let hasNew = false;
+
+          data.messages.forEach(remoteMsg => {
+            if (!localIds.has(remoteMsg.id)) {
+              local.push(remoteMsg);
+              hasNew = true;
+            }
+          });
+
+          if (hasNew) {
+            local.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            this.saveMessages(local);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('storage'));
+              window.dispatchEvent(new CustomEvent('evt_chat_updated'));
+            }
+          }
+        }
+      }
+    } catch (e) { }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('evt_chat_updated'));
     }
+  }
+
+  async pushPrivateMessageToCloud(newMessage) {
+    try {
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ede9-7ee9-a9b5-a3a4ee973bdb', { cache: 'no-store' });
+      let currentMessages = [];
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.messages)) {
+          currentMessages = data.messages;
+        }
+      }
+      if (!currentMessages.some(m => m.id === newMessage.id)) {
+        currentMessages.push(newMessage);
+      }
+      await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ede9-7ee9-a9b5-a3a4ee973bdb', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: currentMessages })
+      });
+    } catch (e) { }
   }
 
   getCommunityMessages(eventId) {
@@ -730,6 +828,9 @@ class LocalDB {
     };
     all.push(newMessage);
     localStorage.setItem("evt_community_messages", JSON.stringify(all));
+
+    // Push to global cloud endpoint for multi-device cross-browser real-time sync
+    this.pushCommunityMessageToCloud(newMessage);
 
     if (syncChannel) {
       try {
@@ -926,6 +1027,9 @@ class LocalDB {
     };
     msgs.push(newMessage);
     this.saveMessages(msgs);
+
+    // Push to global cloud endpoint for multi-device cross-browser real-time sync
+    this.pushPrivateMessageToCloud(newMessage);
 
     if (syncChannel) {
       try {
