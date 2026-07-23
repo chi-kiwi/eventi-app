@@ -697,10 +697,6 @@ class LocalDB {
           if (hasNew) {
             local.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             localStorage.setItem("evt_community_messages", JSON.stringify(local));
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new Event('storage'));
-              window.dispatchEvent(new CustomEvent('evt_community_updated'));
-            }
           }
         }
       }
@@ -714,6 +710,7 @@ class LocalDB {
 
   async pushCommunityMessageToCloud(newMessage) {
     try {
+      const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
       const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', { cache: 'no-store' });
       let currentMessages = [];
       if (res.ok) {
@@ -722,13 +719,18 @@ class LocalDB {
           currentMessages = data.messages;
         }
       }
-      if (!currentMessages.some(m => m.id === newMessage.id)) {
-        currentMessages.push(newMessage);
-      }
+      
+      const mergedMap = new Map();
+      currentMessages.forEach(m => mergedMap.set(m.id, m));
+      local.forEach(m => mergedMap.set(m.id, m));
+      if (newMessage) mergedMap.set(newMessage.id, newMessage);
+
+      const allMerged = Array.from(mergedMap.values()).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
       await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: currentMessages })
+        body: JSON.stringify({ messages: allMerged })
       });
     } catch (e) { }
   }
@@ -754,10 +756,6 @@ class LocalDB {
           if (hasNew) {
             local.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             this.saveMessages(local);
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new Event('storage'));
-              window.dispatchEvent(new CustomEvent('evt_chat_updated'));
-            }
           }
         }
       }
@@ -771,6 +769,7 @@ class LocalDB {
 
   async pushPrivateMessageToCloud(newMessage) {
     try {
+      const local = this.getMessages();
       const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ede9-7ee9-a9b5-a3a4ee973bdb', { cache: 'no-store' });
       let currentMessages = [];
       if (res.ok) {
@@ -779,13 +778,18 @@ class LocalDB {
           currentMessages = data.messages;
         }
       }
-      if (!currentMessages.some(m => m.id === newMessage.id)) {
-        currentMessages.push(newMessage);
-      }
+
+      const mergedMap = new Map();
+      currentMessages.forEach(m => mergedMap.set(m.id, m));
+      local.forEach(m => mergedMap.set(m.id, m));
+      if (newMessage) mergedMap.set(newMessage.id, newMessage);
+
+      const allMerged = Array.from(mergedMap.values()).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
       await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ede9-7ee9-a9b5-a3a4ee973bdb', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: currentMessages })
+        body: JSON.stringify({ messages: allMerged })
       });
     } catch (e) { }
   }
@@ -794,15 +798,15 @@ class LocalDB {
     const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
     const users = this.getUsers();
     const events = this.getEvents();
-    const evt = events.find(e => e.id === eventId);
+    const evt = events.find(e => String(e.id) === String(eventId));
     const organizerId = evt ? evt.organizerId : null;
 
     return all
-      .filter(m => m.eventId === eventId)
+      .filter(m => String(m.eventId) === String(eventId))
       .map(m => {
-        const u = users.find(usr => usr.id === m.userId);
-        const isOrganizer = m.userId === organizerId;
-        const isCollaborator = u && u.role === 'collaboratore' && u.invitedBy === organizerId;
+        const u = users.find(usr => String(usr.id) === String(m.userId));
+        const isOrganizer = String(m.userId) === String(organizerId);
+        const isCollaborator = u && u.role === 'collaboratore' && String(u.invitedBy) === String(organizerId);
         return {
           ...m,
           userName: u ? `${u.name} ${u.cognome}` : m.userName,
