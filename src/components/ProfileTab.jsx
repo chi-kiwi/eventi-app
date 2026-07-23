@@ -105,7 +105,10 @@ export default function ProfileTab({ user, onProfileUpdated }) {
 
   if (!user) return <div style={{ padding: '20px', textAlign: 'center' }}>{language === 'en' ? "Please log in to view your profile." : "Accedi per visualizzare il tuo profilo."}</div>;
 
-  const userPoints = user?.points || 0;
+  const userPoints = typeof user?.points === 'number' ? user.points : 0;
+  const userBadges = Array.isArray(user?.badges) ? user.badges : [];
+  const userGoingEvents = Array.isArray(user?.goingEvents) ? user.goingEvents : [];
+
   const currentLeague = LEAGUES.find(l => userPoints >= l.min && userPoints <= l.max) || LEAGUES[0];
   const nextLeague = LEAGUES[LEAGUES.indexOf(currentLeague) + 1] || null;
   
@@ -303,8 +306,12 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(user.collabId || user.id);
-                    alert(`ID Collaboratore (${user.collabId || user.id}) copiato negli appunti!`);
+                    try {
+                      if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(user?.collabId || user?.id);
+                      }
+                    } catch(e) {}
+                    alert(`ID Collaboratore (${user?.collabId || user?.id}) copiato negli appunti!`);
                   }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: 0, marginLeft: '2px' }}
                   title="Copia ID Collaboratore"
@@ -339,11 +346,11 @@ export default function ProfileTab({ user, onProfileUpdated }) {
           <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
             <Award size={20} color="var(--accent-orange)" style={{ margin: '0 auto 4px' }} />
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>XP Totali</span>
-            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{user.points || 0} pt</strong>
+            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{userPoints} pt</strong>
           </div>
 
           <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
-            <span style={{ fontSize: '20px', display: 'block', marginBottom: '2px' }}>{currentLeague.emoji || '🛡️'}</span>
+            <span style={{ fontSize: '20px', display: 'block', marginBottom: '2px' }}>{currentLeague.badge || '🛡️'}</span>
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Lega</span>
             <strong style={{ fontSize: '14px', color: 'var(--accent-primary)', whiteSpace: 'nowrap' }}>{currentLeague.name}</strong>
           </div>
@@ -351,13 +358,13 @@ export default function ProfileTab({ user, onProfileUpdated }) {
           <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
             <Sparkles size={20} color="var(--accent-pink)" style={{ margin: '0 auto 4px' }} />
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Badge</span>
-            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{user.badges?.length || 0}</strong>
+            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{userBadges.length}</strong>
           </div>
 
           <div style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-glass)' }}>
             <Calendar size={20} color="var(--accent-green)" style={{ margin: '0 auto 4px' }} />
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Eventi</span>
-            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{user.goingEvents?.length || 0}</strong>
+            <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{userGoingEvents.length}</strong>
           </div>
         </div>
       </div>
@@ -386,7 +393,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
         <div style={{ background: 'var(--gradient-card)', border: '1px solid var(--border-glass)', padding: '14px', borderRadius: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '22px' }}>{currentLeague.emoji || '🛡️'}</span>
+              <span style={{ fontSize: '22px' }}>{currentLeague.badge || '🛡️'}</span>
               <div>
                 <strong style={{ fontSize: '15px', color: 'var(--text-primary)', display: 'block' }}>{currentLeague.name}</strong>
                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Livello di attività utente</span>
@@ -425,16 +432,16 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       <div className="glass-panel" style={{ padding: '18px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <Sparkles size={18} color="var(--accent-orange)" /> {t('unlocked_badges')} ({user.badges?.length || 0})
+            <Sparkles size={18} color="var(--accent-orange)" /> {t('unlocked_badges')} ({userBadges.length})
           </h3>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-            {user.badges?.length || 0} sbloccati
+            {userBadges.length} sbloccati
           </span>
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
           {Object.entries(badgeDetails).map(([badgeTitle, details]) => {
-            const isUnlocked = user.badges?.includes(badgeTitle);
+            const isUnlocked = userBadges.includes(badgeTitle);
             return (
               <div 
                 key={badgeTitle} 
@@ -475,14 +482,14 @@ export default function ProfileTab({ user, onProfileUpdated }) {
             📸 {language === 'en' ? "My Memory Photo Wall" : "Album dei Miei Ricordi"}
           </h3>
           <span style={{ fontSize: '11px', background: 'var(--gradient-primary)', color: 'white', padding: '3px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
-            {user.goingEvents?.length || 0} Eventi Partecipati
+            {userGoingEvents.length} Eventi Partecipati
           </span>
         </div>
 
-        {user.goingEvents && user.goingEvents.length > 0 ? (
+        {userGoingEvents.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
             {db.getEvents()
-              .filter(e => user.goingEvents.includes(e.id))
+              .filter(e => userGoingEvents.includes(e.id))
               .map(e => (
                 <div 
                   key={e.id}
@@ -510,7 +517,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
               ))}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '24px 16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px border-glass' }}>
+          <div style={{ textAlign: 'center', padding: '24px 16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
             <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>🎟️</span>
             <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold', marginBottom: '4px' }}>
               Nessun evento salvato nel tuo album ricordi

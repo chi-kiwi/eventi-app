@@ -351,8 +351,10 @@ class LocalDB {
       return { success: false, message: "Questo numero di telefono è già associato a un altro account." };
     }
 
+    const numHash = Math.floor(100000 + Math.random() * 900000);
     const newUser = {
       id: "usr_" + Date.now(),
+      collabId: `COL-${numHash}`,
       name: userData.name.trim(),
       cognome: userData.cognome.trim(),
       email: cleanEmail,
@@ -365,7 +367,8 @@ class LocalDB {
       premium: false,
       dateOfBirth: userData.dateOfBirth || "",
       points: 0,
-      badges: []
+      badges: [],
+      goingEvents: []
     };
 
     users.push(newUser);
