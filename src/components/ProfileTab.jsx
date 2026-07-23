@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Award, User, Mail, Phone, Lock, Sparkles, CheckCircle2, ShieldAlert, Camera, Settings, X } from 'lucide-react';
+import { Award, User, Mail, Phone, Lock, Sparkles, CheckCircle2, ShieldAlert, Camera, Settings, X, Calendar } from 'lucide-react';
 import { db } from '../services/db';
 import LegalModal from './LegalModal';
 import { useLanguage } from '../services/i18n.jsx';
