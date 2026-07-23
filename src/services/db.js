@@ -170,6 +170,11 @@ class LocalDB {
               else u.avatar = "";
               updated = true;
             }
+            if (!u.collabId) {
+              const numHash = Math.abs(u.id.split('').reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) | 0, 0)) % 899999 + 100000;
+              u.collabId = `COL-${numHash}`;
+              updated = true;
+            }
           });
           if (updated) {
             localStorage.setItem("evt_users", JSON.stringify(parsed));
@@ -932,7 +937,37 @@ class LocalDB {
     return newMessage;
   }
 
-  // Invite Collaborator
+  // Invite existing user or collaborator by ID
+  inviteCollaboratorById(organizerId, targetId) {
+    const users = this.getUsers();
+    const cleanId = targetId ? targetId.trim().toUpperCase() : '';
+    if (!cleanId) return { success: false, message: "Inserisci un ID Collaboratore o Email valida." };
+
+    const targetUser = users.find(u => 
+      u.id.toUpperCase() === cleanId || 
+      (u.collabId && u.collabId.toUpperCase() === cleanId) ||
+      u.email.toUpperCase() === cleanId
+    );
+
+    if (!targetUser) {
+      return { success: false, message: `Nessun utente trovato con l'ID o l'Email "${targetId}".` };
+    }
+
+    if (targetUser.id === organizerId) {
+      return { success: false, message: "Non puoi invitare te stesso come collaboratore." };
+    }
+
+    if (targetUser.invitedBy === organizerId && targetUser.role === 'collaboratore') {
+      return { success: false, message: `${targetUser.name} ${targetUser.cognome} è già un tuo collaboratore.` };
+    }
+
+    targetUser.role = "collaboratore";
+    targetUser.invitedBy = organizerId;
+    this.saveUsers(users);
+    return { success: true, collaborator: targetUser };
+  }
+
+  // Invite & Create Collaborator
   inviteCollaborator(organizerId, email, name, cognome, phone, password) {
     const users = this.getUsers();
     
@@ -940,8 +975,10 @@ class LocalDB {
       return { success: false, message: "Questa email è già associata a un account." };
     }
 
+    const numHash = Math.floor(100000 + Math.random() * 900000);
     const newCollaborator = {
       id: "col_" + Date.now(),
+      collabId: `COL-${numHash}`,
       name,
       cognome,
       email,

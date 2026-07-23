@@ -345,7 +345,31 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     }
   };
 
-  // Invite Collaborator
+  const [collabIdInput, setCollabIdInput] = useState('');
+  const [inviteMethod, setInviteMethod] = useState('by_id'); // 'by_id' | 'create_new'
+
+  // Invite Collaborator by ID
+  const handleInviteCollaboratorById = (e) => {
+    e.preventDefault();
+    setColError('');
+    setColSuccess('');
+
+    if (!collabIdInput.trim()) {
+      setColError("Inserisci un ID Collaboratore o l'Email dell'utente.");
+      return;
+    }
+
+    const res = db.inviteCollaboratorById(user.id, collabIdInput.trim());
+    if (res.success) {
+      setColSuccess(`🎉 ${res.collaborator.name} ${res.collaborator.cognome} (ID: ${res.collaborator.collabId || res.collaborator.id}) è stato associato con successo al tuo staff!`);
+      setCollabIdInput('');
+      setRefreshCounter(prev => prev + 1);
+    } else {
+      setColError(res.message);
+    }
+  };
+
+  // Invite Collaborator by creating new profile
   const handleInviteCollaborator = (e) => {
     e.preventDefault();
     setColError('');
@@ -358,7 +382,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
 
     const res = db.inviteCollaborator(user.id, colEmail, colName, colCognome, colPhone, colPass);
     if (res.success) {
-      setColSuccess(`Collaboratore ${colName} invitato con successo!`);
+      setColSuccess(`🎉 Collaboratore registrato! ID Generato: ${res.collaborator.collabId || res.collaborator.id}`);
       setColName('');
       setColCognome('');
       setColEmail('');
@@ -972,42 +996,111 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       {dashTab === 'collaborators' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          {/* Invite Collaborator Section */}
+          {/* Mode Switcher */}
           <div className="glass-panel" style={{ padding: '20px' }}>
-            <h3 style={{ fontSize: '16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <UserPlus size={18} color="var(--accent-primary)" /> Invita Collaboratore
+            <h3 style={{ fontSize: '16px', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <UserPlus size={18} color="var(--accent-primary)" /> Gestione Invito Collaboratori & Staff
             </h3>
-            <form onSubmit={handleInviteCollaborator} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '11px' }}>Nome</label>
-                  <input type="text" className="form-input" placeholder="Luca" value={colName} onChange={(e) => setColName(e.target.value)} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label" style={{ fontSize: '11px' }}>Cognome</label>
-                  <input type="text" className="form-input" placeholder="Neri" value={colCognome} onChange={(e) => setColCognome(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '11px' }}>Email</label>
-                <input type="email" className="form-input" placeholder="collab@events.com" value={colEmail} onChange={(e) => setColEmail(e.target.value)} />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '11px' }}>Telefono</label>
-                <input type="tel" className="form-input" placeholder="3401111111" value={colPhone} onChange={(e) => setColPhone(e.target.value)} />
-              </div>
-              <div>
-                <label className="form-label" style={{ fontSize: '11px' }}>Password Collaboratore</label>
-                <input type="password" className="form-input" placeholder="Crea password temporanea" value={colPass} onChange={(e) => setColPass(e.target.value)} />
-              </div>
 
-              {colError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px' }}>{colError}</p>}
-              {colSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '13px' }}>{colSuccess}</p>}
-
-              <button type="submit" className="btn btn-secondary">
-                Registra Collaboratore
+            {/* Toggle method tabs */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '10px' }}>
+              <button
+                type="button"
+                onClick={() => { setInviteMethod('by_id'); setColError(''); setColSuccess(''); }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  background: inviteMethod === 'by_id' ? 'var(--gradient-primary)' : 'transparent',
+                  color: inviteMethod === 'by_id' ? 'white' : 'var(--text-secondary)'
+                }}
+              >
+                ⚡ Invita tramite ID Collaboratore (Consigliato)
               </button>
-            </form>
+              <button
+                type="button"
+                onClick={() => { setInviteMethod('create_new'); setColError(''); setColSuccess(''); }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  background: inviteMethod === 'create_new' ? 'var(--gradient-primary)' : 'transparent',
+                  color: inviteMethod === 'create_new' ? 'white' : 'var(--text-secondary)'
+                }}
+              >
+                🆕 Registra Nuovo Collaboratore
+              </button>
+            </div>
+
+            {/* METHOD A: INVITE VIA ID */}
+            {inviteMethod === 'by_id' && (
+              <form onSubmit={handleInviteCollaboratorById} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Chiedi al collaboratore il suo <strong>ID Collaboratore</strong> (es. <code>COL-100201</code> o ID utente) o la sua email.
+                </p>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px' }}>ID Collaboratore o Email Utente</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="es. COL-100201 oppure col_1 oppure email@collaboratore.com" 
+                    value={collabIdInput} 
+                    onChange={(e) => setCollabIdInput(e.target.value)} 
+                    style={{ fontSize: '14px', fontWeight: 'bold' }}
+                  />
+                </div>
+
+                {colError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px' }}>{colError}</p>}
+                {colSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '13px' }}>{colSuccess}</p>}
+
+                <button type="submit" className="btn btn-primary" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+                  <UserPlus size={16} /> Associa Collaboratore tramite ID
+                </button>
+              </form>
+            )}
+
+            {/* METHOD B: CREATE NEW COLLABORATOR */}
+            {inviteMethod === 'create_new' && (
+              <form onSubmit={handleInviteCollaborator} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label" style={{ fontSize: '11px' }}>Nome</label>
+                    <input type="text" className="form-input" placeholder="Luca" value={colName} onChange={(e) => setColName(e.target.value)} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label" style={{ fontSize: '11px' }}>Cognome</label>
+                    <input type="text" className="form-input" placeholder="Neri" value={colCognome} onChange={(e) => setColCognome(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px' }}>Email</label>
+                  <input type="email" className="form-input" placeholder="collab@events.com" value={colEmail} onChange={(e) => setColEmail(e.target.value)} />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px' }}>Telefono</label>
+                  <input type="tel" className="form-input" placeholder="3401111111" value={colPhone} onChange={(e) => setColPhone(e.target.value)} />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '11px' }}>Password Collaboratore</label>
+                  <input type="password" className="form-input" placeholder="Crea password temporanea" value={colPass} onChange={(e) => setColPass(e.target.value)} />
+                </div>
+
+                {colError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px' }}>{colError}</p>}
+                {colSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '13px' }}>{colSuccess}</p>}
+
+                <button type="submit" className="btn btn-secondary">
+                  Registra e Genera ID Collaboratore
+                </button>
+              </form>
+            )}
           </div>
 
           {/* List of collaborators */}
@@ -1029,7 +1122,10 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                     paddingBottom: '8px' 
                   }}
                 >
-                  <span style={{ fontWeight: '500' }}>💼 {c.name} {c.cognome} ({c.email})</span>
+                  <div>
+                    <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', display: 'block' }}>💼 {c.name} {c.cognome} ({c.email})</span>
+                    <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>ID: {c.collabId || c.id}</span>
+                  </div>
                   <button 
                     type="button"
                     onClick={() => handleRemoveCollaborator(c.id)}

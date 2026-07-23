@@ -103,7 +103,9 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     }
   ];
 
-  const userPoints = user.points || 0;
+  if (!user) return <div style={{ padding: '20px', textAlign: 'center' }}>{language === 'en' ? "Please log in to view your profile." : "Accedi per visualizzare il tuo profilo."}</div>;
+
+  const userPoints = user?.points || 0;
   const currentLeague = LEAGUES.find(l => userPoints >= l.min && userPoints <= l.max) || LEAGUES[0];
   const nextLeague = LEAGUES[LEAGUES.indexOf(currentLeague) + 1] || null;
   
@@ -223,8 +225,6 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     }
   };
 
-  if (!user) return <div style={{ padding: '20px', textAlign: 'center' }}>{language === 'en' ? "Please log in to view your profile." : "Accedi per visualizzare il tuo profilo."}</div>;
-
   return (
     <div className="view-content animate-fade-in" style={{ paddingBottom: '40px' }}>
       
@@ -285,13 +285,32 @@ export default function ProfileTab({ user, onProfileUpdated }) {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', background: 'var(--bg-tertiary)', padding: '3px 10px', borderRadius: '12px', color: 'var(--text-secondary)', border: '1px solid var(--border-glass)', fontWeight: '600' }}>
-                  👤 {user.role === 'organizzatore' ? 'Organizzatore Eventi' : 'Partecipante Utente'}
+                  👤 {user.role === 'organizzatore' ? 'Organizzatore Eventi' : user.role === 'collaboratore' ? 'Collaboratore Staff' : 'Partecipante Utente'}
                 </span>
                 {user.comune && (
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                     📍 {user.comune} ({user.regione || 'IT'})
                   </span>
                 )}
+              </div>
+
+              {/* ID Collaboratore Badge */}
+              <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
+                <span>💼 ID Collaboratore:</span>
+                <code style={{ background: 'var(--bg-secondary)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '12px' }}>
+                  {user.collabId || user.id}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(user.collabId || user.id);
+                    alert(`ID Collaboratore (${user.collabId || user.id}) copiato negli appunti!`);
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: 0, marginLeft: '2px' }}
+                  title="Copia ID Collaboratore"
+                >
+                  📋
+                </button>
               </div>
             </div>
           </div>
