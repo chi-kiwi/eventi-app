@@ -7,7 +7,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
   const [dashTab, setDashTab] = useState('stats'); // stats / create / collaborators
   
   // Selection of event to view statistics
-  const myEvents = events.filter(e => e.organizerId === user.id);
+  const myEvents = events.filter(e => e.organizerId === user.id || (user.role === 'collaboratore' && e.organizerId === user.invitedBy));
   const [selectedEventId, setSelectedEventId] = useState(myEvents[0]?.id || '');
   const activeEvent = myEvents.find(e => e.id === selectedEventId);
 

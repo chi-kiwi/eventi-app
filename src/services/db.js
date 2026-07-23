@@ -668,71 +668,42 @@ class LocalDB {
     return { success: true, event, liked, xpAwarded, uploaderId: photo.uploaderId };
   }
 
-  async syncCloudCommunityMessages() {
-    try {
-      const res = await fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7adefe142f');
-      if (!res.ok) return;
-      const data = await res.json();
-      const cloudMsgs = data?.data?.messages || [];
-
-      if (cloudMsgs.length > 0) {
-        const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
-        let updated = false;
-        cloudMsgs.forEach(m => {
-          if (!local.some(l => l.id === m.id)) {
-            local.push(m);
-            updated = true;
-          }
-        });
-        if (updated) {
-          localStorage.setItem("evt_community_messages", JSON.stringify(local));
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new CustomEvent('evt_community_updated'));
-          }
-        }
-      }
-    } catch (e) { }
+  syncCloudCommunityMessages() {
+    // Local storage & BroadcastChannel real-time sync trigger
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('evt_community_updated'));
+    }
   }
 
-  async syncCloudPrivateMessages() {
-    try {
-      const res = await fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7b25f91432');
-      if (!res.ok) return;
-      const data = await res.json();
-      const cloudMsgs = data?.data?.messages || [];
-
-      if (cloudMsgs.length > 0) {
-        const local = JSON.parse(localStorage.getItem("evt_messages") || "[]");
-        let updated = false;
-        cloudMsgs.forEach(m => {
-          if (!local.some(l => l.id === m.id)) {
-            local.push(m);
-            updated = true;
-          }
-        });
-        if (updated) {
-          localStorage.setItem("evt_messages", JSON.stringify(local));
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new CustomEvent('evt_chat_updated'));
-          }
-        }
-      }
-    } catch (e) { }
+  syncCloudPrivateMessages() {
+    // Local storage & BroadcastChannel real-time sync trigger
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('evt_chat_updated'));
+    }
   }
 
   getCommunityMessages(eventId) {
     const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
     const users = this.getUsers();
+    const events = this.getEvents();
+    const evt = events.find(e => e.id === eventId);
+    const organizerId = evt ? evt.organizerId : null;
+
     return all
       .filter(m => m.eventId === eventId)
       .map(m => {
         const u = users.find(usr => usr.id === m.userId);
+        const isOrganizer = m.userId === organizerId;
+        const isCollaborator = u && u.role === 'collaboratore' && u.invitedBy === organizerId;
         return {
           ...m,
           userName: u ? `${u.name} ${u.cognome}` : m.userName,
-          userAvatar: u ? u.avatar : m.userAvatar
+          userAvatar: u ? u.avatar : m.userAvatar,
+          userRole: u ? u.role : 'utente',
+          isOrganizer,
+          isCollaborator
         };
       })
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -751,21 +722,6 @@ class LocalDB {
     };
     all.push(newMessage);
     localStorage.setItem("evt_community_messages", JSON.stringify(all));
-
-    // Post to cloud pub/sub for cross-device & cross-browser sync
-    try {
-      fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7adefe142f').then(r => r.json()).then(data => {
-        const existing = data?.data?.messages || [];
-        if (!existing.some(m => m.id === newMessage.id)) {
-          existing.push(newMessage);
-          fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7adefe142f', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: 'evt_community_sync', data: { messages: existing } })
-          }).catch(() => {});
-        }
-      }).catch(() => {});
-    } catch(e) {}
 
     if (syncChannel) {
       try {
@@ -788,6 +744,41 @@ class LocalDB {
     }
 
     return { success: true, message: newMessage, userPoints };
+  }
+
+  deleteCommunityMessage(eventId, messageId, requestingUserId) {
+    const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
+    const msgIndex = all.findIndex(m => m.id === messageId && m.eventId === eventId);
+    if (msgIndex === -1) return { success: false, message: "Messaggio non trovato." };
+
+    const msg = all[msgIndex];
+    const events = this.getEvents();
+    const evt = events.find(e => e.id === eventId);
+    const users = this.getUsers();
+    const user = users.find(u => u.id === requestingUserId);
+
+    const isAuthor = msg.userId === requestingUserId;
+    const isOwner = evt && evt.organizerId === requestingUserId;
+    const isCollaborator = user && user.role === 'collaboratore' && evt && evt.organizerId === user.invitedBy;
+
+    if (!isAuthor && !isOwner && !isCollaborator) {
+      return { success: false, message: "Non autorizzato ad eliminare questo messaggio." };
+    }
+
+    all.splice(msgIndex, 1);
+    localStorage.setItem("evt_community_messages", JSON.stringify(all));
+
+    if (syncChannel) {
+      try {
+        syncChannel.postMessage({ type: 'NEW_COMMUNITY_MESSAGE', data: { id: messageId, deleted: true } });
+      } catch (e) { }
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('evt_community_updated'));
+    }
+
+    return { success: true };
   }
 
   addEventUpdate(eventId, userId, text) {
@@ -927,21 +918,6 @@ class LocalDB {
     };
     msgs.push(newMessage);
     this.saveMessages(msgs);
-
-    // Post to cloud pub/sub for cross-device & cross-browser sync
-    try {
-      fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7b25f91432').then(r => r.json()).then(data => {
-        const existing = data?.data?.messages || [];
-        if (!existing.some(m => m.id === newMessage.id)) {
-          existing.push(newMessage);
-          fetch('https://api.restful-api.dev/objects/ff8081819f7e10ae019f8a7b25f91432', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: 'evt_private_chat_sync', data: { messages: existing } })
-          }).catch(() => {});
-        }
-      }).catch(() => {});
-    } catch(e) {}
 
     if (syncChannel) {
       try {

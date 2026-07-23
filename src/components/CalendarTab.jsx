@@ -1,40 +1,89 @@
 import React, { useState } from 'react';
-import { Calendar as CalIcon, MapPin, Clock, ArrowRight, Info, Check } from 'lucide-react';
+import { Calendar as CalIcon, MapPin, Clock, ArrowRight, Info, Check, ChevronLeft, ChevronRight, Bookmark, Heart } from 'lucide-react';
 import { db } from '../services/db';
+import { useLanguage } from '../services/i18n.jsx';
 
-export default function CalendarTab({ user, events, onSelectEvent }) {
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+export default function CalendarTab({ user, events = [], onSelectEvent }) {
+  const { language, t } = useLanguage();
 
-  // Filter events where user is attending ("Ci sarò")
-  const attendingEvents = events.filter(e => e.goingUsers?.includes(user.id));
+  // Current view date (default to July 2026 or current real date)
+  const today = new Date();
+  const initialYear = today.getFullYear() === 2026 ? 2026 : 2026;
+  const initialMonth = today.getMonth() === 6 ? 6 : 6; // 0-indexed: 6 = July
 
-  // Calendar parameters for June 2026
-  // June 2026 starts on a Monday (1) and has 30 days.
-  const daysInMonth = 30;
-  const startDayOffset = 0; // Monday is the 1st day of the week, so 0 offset if Mon=0
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(6); // 6 = Luglio 2026
+  const [selectedDay, setSelectedDay] = useState(23); // Default 23rd
+  const [calendarFilter, setCalendarFilter] = useState('attending'); // 'attending' | 'all' | 'interested'
 
-  const monthName = "Giugno 2026";
-  const daysOfWeek = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+  const monthNames = language === 'en' 
+    ? ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    : ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
-  // Helper to get events on a specific day of June 2026
-  const getEventsOnDay = (dayNumber) => {
-    const dayStr = dayNumber < 10 ? `0${dayNumber}` : `${dayNumber}`;
-    const dateQuery = `2026-06-${dayStr}`;
-    return attendingEvents.filter(e => e.date === dateQuery);
+  const daysOfWeek = language === 'en'
+    ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    : ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+
+  // Helper to compute calendar grid for any year/month
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOffset = (year, month) => {
+    const day = new Date(year, month, 1).getDay(); // 0 = Sun, 1 = Mon ...
+    return day === 0 ? 6 : day - 1; // 0 = Mon, 6 = Sun
   };
 
-  // Helper to check if any event on this day is active
-  const hasEvents = (dayNumber) => {
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+  const startDayOffset = getFirstDayOffset(currentYear, currentMonth);
+
+  // Month navigation
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(prev => prev - 1);
+    } else {
+      setCurrentMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(prev => prev + 1);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+  };
+
+  // Filter events based on active user filter
+  const getFilteredEventsList = () => {
+    if (!user) return events;
+    if (calendarFilter === 'attending') {
+      return events.filter(e => e.goingUsers?.includes(user.id));
+    }
+    if (calendarFilter === 'interested') {
+      return events.filter(e => e.interestedUsers?.includes(user.id) || e.savedUsers?.includes(user.id));
+    }
+    return events; // 'all'
+  };
+
+  const filteredEvents = getFilteredEventsList();
+
+  // Helper to get events on a specific day for the active month & year
+  const getEventsOnDay = (dayNumber) => {
+    const monthStr = (currentMonth + 1) < 10 ? `0${currentMonth + 1}` : `${currentMonth + 1}`;
+    const dayStr = dayNumber < 10 ? `0${dayNumber}` : `${dayNumber}`;
+    const dateQuery = `${currentYear}-${monthStr}-${dayStr}`;
+    return filteredEvents.filter(e => e.date === dateQuery);
+  };
+
+  const hasEventsOnDay = (dayNumber) => {
     return getEventsOnDay(dayNumber).length > 0;
   };
 
-  // Generate calendar grid array
+  // Build grid cells
   const calendarCells = [];
-  // Empty slots for offset
   for (let i = 0; i < startDayOffset; i++) {
     calendarCells.push(null);
   }
-  // Days of the month
   for (let i = 1; i <= daysInMonth; i++) {
     calendarCells.push(i);
   }
@@ -49,13 +98,100 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
   return (
     <div className="view-content animate-fade-in" style={{ paddingBottom: '30px' }}>
       <h2 style={{ fontSize: '20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <CalIcon color="var(--accent-primary)" /> Il Mio Calendario
+        <CalIcon color="var(--accent-primary)" /> {t('calendar')}
       </h2>
 
-      {/* Calendar Grid Box */}
+      {/* Filter Selector Tabs */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '10px' }}>
+        <button
+          type="button"
+          onClick={() => setCalendarFilter('attending')}
+          style={{
+            flex: 1,
+            padding: '6px 10px',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: calendarFilter === 'attending' ? 'var(--gradient-primary)' : 'transparent',
+            color: calendarFilter === 'attending' ? 'white' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+        >
+          <Check size={13} /> {language === 'en' ? "Going" : "Ci sarò"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCalendarFilter('interested')}
+          style={{
+            flex: 1,
+            padding: '6px 10px',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: calendarFilter === 'interested' ? 'var(--gradient-primary)' : 'transparent',
+            color: calendarFilter === 'interested' ? 'white' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+        >
+          <Heart size={13} /> {language === 'en' ? "Interested" : "Interessato/Salvati"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCalendarFilter('all')}
+          style={{
+            flex: 1,
+            padding: '6px 10px',
+            borderRadius: '8px',
+            border: 'none',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: calendarFilter === 'all' ? 'var(--gradient-primary)' : 'transparent',
+            color: calendarFilter === 'all' ? 'white' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+        >
+          <CalIcon size={13} /> {language === 'en' ? "All Events" : "Tutti gli Eventi"}
+        </button>
+      </div>
+
+      {/* Dynamic Month Selector Header & Grid Box */}
       <div className="glass-panel" style={{ padding: '16px', marginBottom: '20px' }}>
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', marginBottom: '12px', color: 'var(--text-primary)' }}>
-          {monthName}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <button 
+            type="button"
+            onClick={handlePrevMonth}
+            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)' }}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          
+          <h3 style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-primary)', margin: 0 }}>
+            {monthNames[currentMonth]} {currentYear}
+          </h3>
+
+          <button 
+            type="button"
+            onClick={handleNextMonth}
+            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-primary)' }}
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
 
         {/* Days of week headers */}
@@ -72,9 +208,8 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
               return <div key={`empty-${idx}`} />;
             }
 
-            const active = hasEvents(day);
+            const active = hasEventsOnDay(day);
             const isSelected = selectedDay === day;
-            const isToday = day === new Date().getDate();
 
             return (
               <button
@@ -86,8 +221,8 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
                   borderRadius: '50%',
                   border: isSelected ? '2px solid var(--accent-primary)' : '1px solid transparent',
                   background: active 
-                    ? 'rgba(79, 70, 229, 0.15)' 
-                    : isToday 
+                    ? 'rgba(79, 70, 229, 0.2)' 
+                    : isSelected 
                       ? 'var(--bg-tertiary)' 
                       : 'transparent',
                   color: active 
@@ -95,7 +230,7 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
                     : isSelected 
                       ? 'var(--text-primary)' 
                       : 'var(--text-secondary)',
-                  fontWeight: active || isSelected || isToday ? 'bold' : 'normal',
+                  fontWeight: active || isSelected ? 'bold' : 'normal',
                   fontSize: '13px',
                   cursor: 'pointer',
                   position: 'relative',
@@ -107,7 +242,7 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
               >
                 {day}
                 {active && (
-                  <span style={{ position: 'absolute', bottom: '3px', width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)' }} />
+                  <span style={{ position: 'absolute', bottom: '3px', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)' }} />
                 )}
               </button>
             );
@@ -118,7 +253,7 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
       {/* Selected Day Agenda view */}
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', marginBottom: '8px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '6px' }}>
-          Agenda del {selectedDay} Giugno 2026
+          {language === 'en' ? `Agenda for ${selectedDay} ${monthNames[currentMonth]} ${currentYear}` : `Agenda del ${selectedDay} ${monthNames[currentMonth]} ${currentYear}`}
         </h3>
         
         {selectedDayEvents.length > 0 ? (
@@ -150,7 +285,7 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
                       <MapPin size={11} /> {evt.location.split(',')[0]}
                     </span>
                     <span style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      <Check size={12} /> Iscritto
+                      <Check size={12} /> {language === 'en' ? "Details" : "Vedi Dettagli"}
                     </span>
                   </div>
                 </div>
@@ -159,20 +294,24 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
           </div>
         ) : (
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', padding: '8px 0' }}>
-            Nessun evento in programma per questo giorno.
+            {language === 'en' ? "No events scheduled for this day." : "Nessun evento in programma per questo giorno."}
           </p>
         )}
       </div>
 
-      {/* Full Attendee List Timeline */}
+      {/* Full List Timeline */}
       <div>
         <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', marginBottom: '8px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '6px' }}>
-          Tutti i miei impegni ({attendingEvents.length})
+          {calendarFilter === 'attending' 
+            ? (language === 'en' ? `Events I'm Attending (${filteredEvents.length})` : `I miei impegni (${filteredEvents.length})`)
+            : calendarFilter === 'interested'
+              ? (language === 'en' ? `Interested / Saved Events (${filteredEvents.length})` : `Eventi d'interesse / Salvati (${filteredEvents.length})`)
+              : (language === 'en' ? `All Available Events (${filteredEvents.length})` : `Tutti gli eventi disponibili (${filteredEvents.length})`)}
         </h3>
         
-        {attendingEvents.length > 0 ? (
+        {filteredEvents.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {attendingEvents.map(evt => (
+            {filteredEvents.map(evt => (
               <div 
                 key={evt.id} 
                 className="glass-card"
@@ -182,7 +321,7 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
                 <div>
                   <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{evt.title}</h4>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    📅 {evt.date} alle {evt.time} - {evt.location.split(',')[0]}
+                    📅 {evt.date} {language === 'en' ? "at" : "alle"} {evt.time} - {evt.location.split(',')[0]}
                   </p>
                 </div>
                 <ArrowRight size={18} color="var(--text-muted)" />
@@ -192,7 +331,9 @@ export default function CalendarTab({ user, events, onSelectEvent }) {
         ) : (
           <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>
             <Info size={20} style={{ margin: '0 auto 6px', display: 'block', opacity: 0.6 }} />
-            Non ti sei ancora iscritto a nessun evento. Clicca su "Ci sarò" nella scheda esplora per aggiungerlo direttamente qui!
+            {calendarFilter === 'attending' 
+              ? (language === 'en' ? "You haven't joined any events yet. Click 'Going' on any event card to add it to your calendar!" : "Non ti sei ancora iscritto a nessun evento. Clicca su 'Ci sarò' nella scheda esplora per aggiungerlo direttamente qui!")
+              : (language === 'en' ? "No events found for this filter." : "Nessun evento trovato per questo filtro.")}
           </div>
         )}
       </div>

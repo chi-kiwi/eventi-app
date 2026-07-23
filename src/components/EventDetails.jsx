@@ -341,6 +341,19 @@ END:VCALENDAR`;
     }
   };
 
+  const handleDeleteCommunityMessage = (msgId) => {
+    if (!user) return;
+    const confirmDel = window.confirm(language === 'en' ? "Delete this message from the community board?" : "Eliminare questo messaggio dalla bacheca community?");
+    if (!confirmDel) return;
+
+    const res = db.deleteCommunityMessage(event.id, msgId, user.id);
+    if (res.success) {
+      setCommunityMessages(db.getCommunityMessages(event.id));
+    } else {
+      alert(res.message);
+    }
+  };
+
   const handlePostCommunityMessage = (e) => {
     e.preventDefault();
     if (!newMessageText.trim() || !user) return;
@@ -895,33 +908,77 @@ END:VCALENDAR`;
           </p>
 
           {/* Messages list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border-glass)', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.01)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '320px', overflowY: 'auto', border: '1px solid var(--border-glass)', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.01)' }}>
             {communityMessages.length > 0 ? (
-              communityMessages.map((msg) => (
-                <div key={msg.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  {msg.userAvatar ? (
-                    <img 
-                      src={msg.userAvatar} 
-                      alt={msg.userName} 
-                      style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
-                    />
-                  ) : (
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <User size={16} color="var(--text-secondary)" />
+              communityMessages.map((msg) => {
+                const canDeleteMsg = user && (
+                  msg.userId === user.id || 
+                  event.organizerId === user.id || 
+                  (user.role === 'collaboratore' && event.organizerId === user.invitedBy)
+                );
+
+                return (
+                  <div key={msg.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    {msg.userAvatar ? (
+                      <img 
+                        src={msg.userAvatar} 
+                        alt={msg.userName} 
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
+                      />
+                    ) : (
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <User size={16} color="var(--text-secondary)" />
+                      </div>
+                    )}
+                    
+                    <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{msg.userName}</span>
+                          {msg.isOrganizer && (
+                            <span style={{ fontSize: '9px', background: 'var(--gradient-primary)', color: 'white', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
+                              👑 Organizzatore
+                            </span>
+                          )}
+                          {msg.isCollaborator && (
+                            <span style={{ fontSize: '9px', background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-primary)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
+                              ⭐ Staff
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {canDeleteMsg && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCommunityMessage(msg.id)}
+                              style={{ background: 'none', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', opacity: 0.8, padding: '2px' }}
+                              title="Elimina messaggio"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{msg.text}</p>
+
+                      {user && (
+                        <button
+                          type="button"
+                          onClick={() => setNewMessageText(`@${msg.userName} `)}
+                          style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', padding: 0, marginTop: '4px' }}
+                        >
+                          ↩ {language === 'en' ? "Reply" : "Rispondi"}
+                        </button>
+                      )}
                     </div>
-                  )}
-                  
-                  <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{msg.userName}</span>
-                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{msg.text}</p>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
                 {language === 'en' ? "No messages posted. Write the first post!" : "Nessun messaggio pubblicato. Scrivi il primo post!"}
