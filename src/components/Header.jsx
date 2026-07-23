@@ -12,8 +12,13 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
 
   return (
     <header className="app-header" style={{ position: 'relative' }}>
-      <div className="app-title" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => onTabChange('explore')}>
-        <span style={{ fontSize: '18px', lineHeight: 1 }}>🎟️</span>
+      <div className="app-title" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => onTabChange('explore')}>
+        <img 
+          src="/logo.jpg" 
+          alt="CF Logo" 
+          style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-glass)', boxShadow: 'var(--shadow-sm)' }}
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
         <span style={{ 
           fontSize: '18px', 
           fontWeight: 800, 

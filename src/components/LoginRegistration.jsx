@@ -293,8 +293,13 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
     <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
       <ThemeLangBar />
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'inline-block' }}>
-          🎫 Eventi App
+        <img 
+          src="/logo.jpg" 
+          alt="CF Logo" 
+          style={{ width: '64px', height: '64px', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--border-glass)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', marginBottom: '12px' }}
+        />
+        <h1 style={{ fontSize: '32px', fontWeight: 800, background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block' }}>
+          Eventi App
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '6px' }}>
           {language === 'en' 
