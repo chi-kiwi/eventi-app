@@ -2,37 +2,39 @@
 
 const DEFAULT_USERS = [
   {
-    id: "usr_1",
+    id: "org_1",
     name: "Chiara",
+    cognome: "Francescon",
+    email: "chiara@eventiapp.com",
+    phone: "3331234567",
+    comune: "Comignago",
+    regione: "Piemonte",
+    password: "password123",
+    role: "organizzatore",
+    interests: ["Feste di paese", "Musica", "Street food", "Motori"],
+    premium: true, // "Spunta Blu" active
+    dateOfBirth: "1998-05-15",
+    points: 500,
+    collabId: "COL-100001",
+    badges: ["Fondatore", "Super Organizzatore"],
+    avatar: "/logo.jpg"
+  },
+  {
+    id: "usr_1",
+    name: "Marco",
     cognome: "Rossi",
     email: "user@events.com",
-    phone: "3331234567",
+    phone: "3479876543",
     comune: "Milano",
     regione: "Lombardia",
     password: "password123",
     role: "utente",
-    interests: ["Feste di paese", "Musica", "Street food"],
+    interests: ["Feste nei locali", "Musica"],
     premium: false,
-    dateOfBirth: "1998-05-15",
+    dateOfBirth: "1995-11-20",
     points: 150,
+    collabId: "COL-100002",
     badges: ["Esploratore"],
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"
-  },
-  {
-    id: "org_1",
-    name: "Marco",
-    cognome: "Bianchi",
-    email: "organizer@events.com",
-    phone: "3479876543",
-    comune: "Saronno",
-    regione: "Lombardia",
-    password: "password123",
-    role: "organizzatore",
-    interests: ["Motori", "Sport"],
-    premium: true, // "Spunta Blu" active
-    dateOfBirth: "1985-11-20",
-    points: 50,
-    badges: [],
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
   },
   {
@@ -41,16 +43,17 @@ const DEFAULT_USERS = [
     cognome: "Verdi",
     email: "collaborator@events.com",
     phone: "3491112222",
-    comune: "Monza",
+    comune: "Saronno",
     regione: "Lombardia",
     password: "password123",
     role: "collaboratore",
     interests: ["Escursioni", "Bambini/Famiglie"],
     premium: false,
-    dateOfBirth: "1995-02-10",
-    points: 20,
+    dateOfBirth: "1997-02-10",
+    points: 50,
+    collabId: "COL-100003",
+    invitedBy: "org_1",
     badges: [],
-    invitedBy: "org_1", // Collaborator of org_1
     avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150"
   }
 ];
