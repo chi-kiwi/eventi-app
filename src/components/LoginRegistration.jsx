@@ -534,6 +534,19 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
         )}
       </div>
 
+      {/* Footer Signature */}
+      <div style={{ textAlign: 'center', marginTop: '20px', opacity: 0.85 }}>
+        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}>
+          Realizzato con <span style={{ color: '#ef4444', fontSize: '13px' }}>❤️</span> da <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Chiara Francescon</strong>
+          <img 
+            src="/logo.jpg" 
+            alt="CF Logo" 
+            style={{ width: '16px', height: '16px', borderRadius: '3px', objectFit: 'cover', display: 'inline-block', verticalAlign: 'middle', border: '1px solid var(--border-glass)' }}
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        </span>
+      </div>
+
       <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
 
       {/* OTP EMAIL VERIFICATION MODAL FOR REGISTRATION */}

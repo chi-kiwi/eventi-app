@@ -596,6 +596,19 @@ export default function App() {
             </>
           )}
 
+          {/* Footer Signature */}
+          <div style={{ textAlign: 'center', padding: '16px 10px 85px', opacity: 0.85 }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}>
+              Realizzato con <span style={{ color: '#ef4444', fontSize: '13px' }}>❤️</span> da <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Chiara Francescon</strong>
+              <img 
+                src="/logo.jpg" 
+                alt="CF Logo" 
+                style={{ width: '16px', height: '16px', borderRadius: '3px', objectFit: 'cover', display: 'inline-block', verticalAlign: 'middle', border: '1px solid var(--border-glass)' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </span>
+          </div>
+
           {/* Bottom Bar Navigation */}
           <NavBar currentTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); setSelectedEvent(null); }} userRole={currentUser.role} />
         </>

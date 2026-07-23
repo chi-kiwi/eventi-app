@@ -76,13 +76,56 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
 
   const [editGeoSuggestions, setEditGeoSuggestions] = useState([]);
 
-  const handleFetchEditSuggestions = (query) => {
+  const handleFetchEditSuggestions = async (query) => {
     if (!query || query.trim().length < 2) {
       setEditGeoSuggestions([]);
       return;
     }
-    const matches = searchItalianComuni(query);
-    setEditGeoSuggestions(matches);
+    const localMatches = searchItalianComuni(query);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(query.trim() + ', Italia')}&limit=5`);
+      const data = await response.json();
+      const remoteMatches = [];
+      if (data && Array.isArray(data)) {
+        data.forEach(item => {
+          const addr = item.address || {};
+          const street = (addr.road || addr.pedestrian || addr.square || addr.house_number) 
+            ? `${addr.road || addr.pedestrian || addr.square || ''} ${addr.house_number || ''}`.trim() 
+            : '';
+          const town = addr.village || addr.town || addr.city || addr.municipality || item.display_name.split(',')[0];
+          const county = addr.county || addr.province || '';
+          const state = addr.state || '';
+          
+          let provinceCode = '';
+          if (addr['ISO3166-2-lvl6']) {
+            provinceCode = addr['ISO3166-2-lvl6'].replace('IT-', '').toUpperCase();
+          } else if (county) {
+            provinceCode = county.replace(/Provincia di /i, '').trim().substring(0, 2).toUpperCase();
+          }
+          
+          const label = street 
+            ? `${street}, ${town}${provinceCode ? ` (${provinceCode})` : ''}` 
+            : (provinceCode ? `${town} (${provinceCode})` : town);
+
+          remoteMatches.push({
+            label,
+            fullTitle: `${label}, ${state}, Italia`,
+            lat: parseFloat(item.lat).toFixed(4),
+            lng: parseFloat(item.lon).toFixed(4)
+          });
+        });
+      }
+      const combined = [...remoteMatches, ...localMatches];
+      const seen = new Set();
+      const unique = combined.filter(item => {
+        if (seen.has(item.label)) return false;
+        seen.add(item.label);
+        return true;
+      });
+      setEditGeoSuggestions(unique.slice(0, 6));
+    } catch (e) {
+      setEditGeoSuggestions(localMatches.slice(0, 5));
+    }
   };
 
   // Geocoding on edit address

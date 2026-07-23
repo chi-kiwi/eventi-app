@@ -140,30 +140,29 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
   const [isGeoLoading, setIsGeoLoading] = useState(false);
   const [geoDetails, setGeoDetails] = useState('');
 
-  // Fetch address suggestions with Province and Region details
+  // Fetch address suggestions combining exact street addresses & Italian towns index
   const handleFetchAddressSuggestions = async (query) => {
     if (!query || query.trim().length < 2) {
       setGeoSuggestions([]);
       return;
     }
 
-    // 1. Instant local search in Italian towns & provinces index
     const localMatches = searchItalianComuni(query);
-    if (localMatches.length > 0) {
-      setGeoSuggestions(localMatches);
-      return;
-    }
 
-    // 2. Remote geocoding strictly within Italy
-    setIsGeoLoading(true);
     try {
+      setIsGeoLoading(true);
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(query.trim() + ', Italia')}&limit=5`, {
         headers: { 'User-Agent': 'EventiApp/1.0 (admin@eventiapp.com)' }
       });
       const data = await response.json();
+      const remoteMatches = [];
+
       if (data && Array.isArray(data) && data.length > 0) {
-        const formattedList = data.map(item => {
+        data.forEach(item => {
           const addr = item.address || {};
+          const street = (addr.road || addr.pedestrian || addr.square || addr.house_number) 
+            ? `${addr.road || addr.pedestrian || addr.square || ''} ${addr.house_number || ''}`.trim() 
+            : '';
           const town = addr.village || addr.town || addr.city || addr.municipality || item.display_name.split(',')[0];
           const county = addr.county || addr.province || '';
           const state = addr.state || '';
@@ -175,22 +174,32 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
             provinceCode = county.replace(/Provincia di /i, '').trim().substring(0, 2).toUpperCase();
           }
           
-          const label = provinceCode ? `${town} (${provinceCode})` : town;
+          const label = street 
+            ? `${street}, ${town}${provinceCode ? ` (${provinceCode})` : ''}` 
+            : (provinceCode ? `${town} (${provinceCode})` : town);
+            
           const fullSubtitle = [state, 'Italia'].filter(Boolean).join(', ');
 
-          return {
+          remoteMatches.push({
             label,
             fullTitle: `${label}, ${fullSubtitle}`,
             lat: parseFloat(item.lat).toFixed(4),
             lng: parseFloat(item.lon).toFixed(4)
-          };
+          });
         });
-        setGeoSuggestions(formattedList);
-      } else {
-        setGeoSuggestions([]);
       }
+
+      const combined = [...remoteMatches, ...localMatches];
+      const seen = new Set();
+      const uniqueSuggestions = combined.filter(item => {
+        if (seen.has(item.label)) return false;
+        seen.add(item.label);
+        return true;
+      });
+
+      setGeoSuggestions(uniqueSuggestions.slice(0, 6));
     } catch (e) {
-      console.error("Suggestions fetch error:", e);
+      setGeoSuggestions(localMatches.slice(0, 5));
     } finally {
       setIsGeoLoading(false);
     }
