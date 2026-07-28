@@ -1,5 +1,8 @@
 // Mock Database Service with localStorage persistence
 
+let _cloudCommunityCache = [];
+let _cloudPrivateCache = [];
+
 const DEFAULT_USERS = [
   {
     id: "org_1",
@@ -683,27 +686,49 @@ class LocalDB {
   async syncCloudCommunityMessages() {
     try {
       const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', { cache: 'no-store' });
+      let remoteMsgs = [];
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.messages)) {
-          const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
-          const localIds = new Set(local.map(m => m.id));
-          let hasNew = false;
+          remoteMsgs = data.messages;
+          _cloudCommunityCache = remoteMsgs;
+        }
+      } else {
+        remoteMsgs = _cloudCommunityCache;
+      }
 
-          data.messages.forEach(remoteMsg => {
-            if (!localIds.has(remoteMsg.id)) {
-              local.push(remoteMsg);
-              hasNew = true;
-            }
-          });
+      const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
+      const localIds = new Set(local.map(m => m.id));
+      let hasNew = false;
 
-          if (hasNew) {
-            local.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            localStorage.setItem("evt_community_messages", JSON.stringify(local));
+      remoteMsgs.forEach(remoteMsg => {
+        if (!localIds.has(remoteMsg.id)) {
+          local.push(remoteMsg);
+          hasNew = true;
+        }
+      });
+
+      if (hasNew) {
+        local.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        localStorage.setItem("evt_community_messages", JSON.stringify(local));
+      }
+    } catch (e) {
+      if (_cloudCommunityCache.length > 0) {
+        const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
+        const localIds = new Set(local.map(m => m.id));
+        let hasNew = false;
+        _cloudCommunityCache.forEach(remoteMsg => {
+          if (!localIds.has(remoteMsg.id)) {
+            local.push(remoteMsg);
+            hasNew = true;
           }
+        });
+        if (hasNew) {
+          local.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          localStorage.setItem("evt_community_messages", JSON.stringify(local));
         }
       }
-    } catch (e) { }
+    }
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('storage'));
@@ -714,13 +739,17 @@ class LocalDB {
   async pushCommunityMessageToCloud(newMessage) {
     try {
       const local = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
-      const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', { cache: 'no-store' });
       let currentMessages = [];
-      if (res.ok) {
-        const data = await res.json();
-        if (data && Array.isArray(data.messages)) {
-          currentMessages = data.messages;
+      try {
+        const res = await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.messages)) {
+            currentMessages = data.messages;
+          }
         }
+      } catch (e) {
+        currentMessages = _cloudCommunityCache;
       }
       
       const mergedMap = new Map();
@@ -729,13 +758,18 @@ class LocalDB {
       if (newMessage) mergedMap.set(newMessage.id, newMessage);
 
       const allMerged = Array.from(mergedMap.values()).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      _cloudCommunityCache = allMerged;
 
       await fetch('https://jsonblob.com/api/jsonBlob/019f8ddd-ee2e-7add-8688-ce66e2df0bd5', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: allMerged })
       });
-    } catch (e) { }
+    } catch (e) {
+      if (newMessage && !_cloudCommunityCache.some(m => m.id === newMessage.id)) {
+        _cloudCommunityCache.push(newMessage);
+      }
+    }
   }
 
   // Real-time Cloud Sync for Private Messages
@@ -857,7 +891,7 @@ class LocalDB {
     return { success: true, liked, likesCount: msg.likes.length };
   }
 
-  addCommunityMessage(eventId, userId, userName, userAvatar, text) {
+  async addCommunityMessage(eventId, userId, userName, userAvatar, text) {
     const all = JSON.parse(localStorage.getItem("evt_community_messages") || "[]");
     const newMessage = {
       id: "cm_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
@@ -872,7 +906,7 @@ class LocalDB {
     localStorage.setItem("evt_community_messages", JSON.stringify(all));
 
     // Push to global cloud endpoint for multi-device cross-browser real-time sync
-    this.pushCommunityMessageToCloud(newMessage);
+    await this.pushCommunityMessageToCloud(newMessage);
 
     if (syncChannel) {
       try {
@@ -1084,6 +1118,44 @@ class LocalDB {
     }
 
     return newMessage;
+  }
+
+  deletePrivateChat(eventId, user1, user2) {
+    let msgs = this.getMessages();
+    msgs = msgs.filter(m => !(
+      m.eventId === eventId &&
+      ((m.senderId === user1 && m.receiverId === user2) || (m.senderId === user2 && m.receiverId === user1))
+    ));
+    this.saveMessages(msgs);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('evt_chat_updated'));
+    }
+    return { success: true };
+  }
+
+  addEventReview(eventId, userId, userName, rating, comment) {
+    const events = this.getEvents();
+    const evtIndex = events.findIndex(e => e.id === eventId);
+    if (evtIndex === -1) return { success: false, message: "Evento non trovato." };
+
+    if (!events[evtIndex].feedback) {
+      events[evtIndex].feedback = [];
+    }
+
+    const newReview = {
+      id: "rev_" + Date.now(),
+      userId,
+      userName,
+      rating: parseInt(rating) || 5,
+      text: comment.trim(),
+      date: new Date().toISOString()
+    };
+
+    events[evtIndex].feedback.unshift(newReview);
+    this.saveEvents(events);
+    return { success: true, review: newReview, event: events[evtIndex] };
   }
 
   // Invite existing user or collaborator by ID

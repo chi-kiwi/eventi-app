@@ -229,9 +229,9 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
         <ThemeLangBar />
         <div className="glass-panel" style={{ padding: '30px' }}>
-          <h2 style={{ marginBottom: '8px', textAlign: 'center' }}>{language === 'en' ? "Password Recovery" : "Recupero Password"}</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', textAlign: 'center' }}>
-            {language === 'en' ? "Enter your contact and your new password." : "Inserisci il tuo contatto e la nuova password."}
+          <h2 style={{ marginBottom: '8px', textAlign: 'center' }}>{language === 'en' ? "Account Recovery" : "Recupero Account"}</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px', textAlign: 'center' }}>
+            {language === 'en' ? "Choose how you want to recover your password or account details:" : "Scegli come desideri recuperare la password o i dati di accesso:"}
           </p>
 
           {recoverySuccess && (
@@ -242,18 +242,21 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
 
           <form onSubmit={handleRecoverySubmit}>
             <div className="form-group">
-              <label className="form-label">{language === 'en' ? "Email or Mobile Number" : "Email o Numero di Telefono"}</label>
+              <label className="form-label">{language === 'en' ? "Email or Mobile Phone Number" : "Email o Numero di Telefono (SMS)"}</label>
               <div style={{ position: 'relative' }}>
                 <Mail size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="email@example.com o 3331234567" 
+                  placeholder="Inserisci la tua Email o Numero di Telefono..." 
                   value={recoveryContact}
                   onChange={(e) => setRecoveryContact(e.target.value)}
                   style={{ paddingLeft: '42px' }}
                 />
               </div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                💡 Se hai perso la password, inserisci l'Email. Se hai perso l'Email, inserisci il tuo Numero di Telefono.
+              </span>
             </div>
 
             <div className="form-group">

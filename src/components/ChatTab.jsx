@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, ArrowLeft, Info } from 'lucide-react';
+import { MessageSquare, Send, ArrowLeft, Info, Trash2 } from 'lucide-react';
 import { db } from '../services/db';
 
 export default function ChatTab({ user, initialActiveChat }) {
@@ -64,23 +64,44 @@ export default function ChatTab({ user, initialActiveChat }) {
     scrollToBottom();
   };
 
+  const handleDeleteChat = () => {
+    if (!activeChat || !user) return;
+    const confirmDel = window.confirm("Sei sicuro di voler eliminare definitivamente questa chat?");
+    if (!confirmDel) return;
+
+    db.deletePrivateChat(activeChat.eventId, user.id, activeChat.otherUserId);
+    setActiveChat(null);
+    setConversations(db.getChatsForUser(user.id));
+  };
+
   if (!user) return <div style={{ padding: '20px', textAlign: 'center' }}>Accedi per visualizzare i messaggi.</div>;
 
   if (activeChat) {
     return (
       <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', height: '80vh', padding: 0 }}>
         {/* Chat Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--bg-glass)', borderBottom: '1px solid var(--border-glass)' }}>
-          <button 
-            onClick={() => setActiveChat(null)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            <ArrowLeft size={24} />
-          </button>
-          <div>
-            <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{activeChat.otherUserName}</h4>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Discussione su: {activeChat.eventTitle}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-glass)', borderBottom: '1px solid var(--border-glass)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button 
+              onClick={() => setActiveChat(null)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <div>
+              <h4 style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{activeChat.otherUserName}</h4>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Discussione su: {activeChat.eventTitle}</span>
+            </div>
           </div>
+
+          <button
+            onClick={handleDeleteChat}
+            style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: 'var(--accent-pink)', cursor: 'pointer', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+            title="Elimina Chat"
+          >
+            <Trash2 size={16} />
+            <span>Elimina</span>
+          </button>
         </div>
 
         {/* Messages Feed */}

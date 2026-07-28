@@ -59,7 +59,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     { 
       name: language === 'en' ? "Bronze League 🥉" : "Lega Bronzo 🥉", 
       min: 0, 
-      max: 99, 
+      max: 149, 
       badge: "🥉",
       status: language === 'en' ? "Community Novice" : "Novizio della Community",
       gradient: "linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(180, 83, 9, 0.25) 100%)",
@@ -67,8 +67,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     },
     { 
       name: language === 'en' ? "Silver League 🥈" : "Lega Argento 🥈", 
-      min: 100, 
-      max: 249, 
+      min: 150, 
+      max: 399, 
       badge: "🥈",
       status: language === 'en' ? "Active Explorer" : "Esploratore Attivo",
       gradient: "linear-gradient(135deg, rgba(148, 163, 184, 0.15) 0%, rgba(71, 85, 105, 0.25) 100%)",
@@ -76,8 +76,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     },
     { 
       name: language === 'en' ? "Gold League 🥇" : "Lega Oro 🥇", 
-      min: 250, 
-      max: 499, 
+      min: 400, 
+      max: 999, 
       badge: "🥇",
       status: language === 'en' ? "Expert Participant" : "Partecipante Esperto",
       gradient: "linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.3) 100%)",
@@ -85,8 +85,8 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     },
     { 
       name: language === 'en' ? "Platinum League 💎" : "Lega Platino 💎", 
-      min: 500, 
-      max: 999, 
+      min: 1000, 
+      max: 2499, 
       badge: "💎",
       status: language === 'en' ? "Community Leader" : "Leader della Community",
       gradient: "linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(59, 130, 246, 0.3) 100%)",
@@ -94,12 +94,21 @@ export default function ProfileTab({ user, onProfileUpdated }) {
     },
     { 
       name: language === 'en' ? "Diamond League 🏆" : "Lega Diamante 🏆", 
-      min: 1000, 
-      max: Infinity, 
+      min: 2500, 
+      max: 4999, 
       badge: "🏆",
       status: language === 'en' ? "Event Legend" : "Leggenda degli Eventi",
       gradient: "linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.35) 100%)",
       color: "#a855f7"
+    },
+    { 
+      name: language === 'en' ? "Legendary Master 👑" : "Maestro Leggendario 👑", 
+      min: 5000, 
+      max: Infinity, 
+      badge: "👑",
+      status: language === 'en' ? "Hall of Fame Master" : "Maestro della Hall of Fame",
+      gradient: "linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(239, 68, 68, 0.3) 100%)",
+      color: "#eab308"
     }
   ];
 

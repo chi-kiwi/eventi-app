@@ -79,7 +79,6 @@ export default function EventCard({ event, user, onSelect, onToggleParticipation
         <p style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
           {language === 'en' ? 'Organized by:' : 'Organizzato da:'} 
           <strong style={{ color: 'var(--text-secondary)' }}>{organizer ? `${organizer.name} ${organizer.cognome}` : 'Organizer'}</strong>
-          {isOrganizerPremium && <span className="verified-badge" title="Verificato">✓</span>}
         </p>
 
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -99,32 +98,44 @@ export default function EventCard({ event, user, onSelect, onToggleParticipation
           </div>
 
           <div style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
-            <button 
-              className={`btn btn-small ${isInterested ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ 
-                padding: '6px 10px', 
-                backgroundColor: isInterested ? 'var(--accent-pink)' : 'var(--bg-tertiary)',
-                boxShadow: isInterested ? 'var(--shadow-glow-pink)' : 'none',
-                borderColor: isInterested ? 'var(--accent-pink)' : 'var(--border-glass)'
-              }}
-              onClick={() => onToggleParticipation(event.id, 'interested')}
-            >
-              <Heart size={14} fill={isInterested ? 'white' : 'none'} color={isInterested ? 'white' : 'var(--text-secondary)'} />
-            </button>
+            {user && (user.id === event.organizerId || user.invitedBy === event.organizerId) ? (
+              <button 
+                className="btn btn-secondary btn-small"
+                style={{ fontSize: '11px', padding: '6px 10px', color: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
+                onClick={() => onSelect(event)}
+              >
+                ✏️ {language === 'en' ? 'Manage' : 'Gestisci'}
+              </button>
+            ) : (
+              <>
+                <button 
+                  className={`btn btn-small ${isInterested ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ 
+                    padding: '6px 10px', 
+                    backgroundColor: isInterested ? 'var(--accent-pink)' : 'var(--bg-tertiary)',
+                    boxShadow: isInterested ? 'var(--shadow-glow-pink)' : 'none',
+                    borderColor: isInterested ? 'var(--accent-pink)' : 'var(--border-glass)'
+                  }}
+                  onClick={() => onToggleParticipation(event.id, 'interested')}
+                >
+                  <Heart size={14} fill={isInterested ? 'white' : 'none'} color={isInterested ? 'white' : 'var(--text-secondary)'} />
+                </button>
 
-            <button 
-              className={`btn btn-small ${isGoing ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ 
-                padding: '6px 10px', 
-                backgroundColor: isGoing ? 'var(--accent-green)' : 'var(--bg-tertiary)',
-                boxShadow: isGoing ? 'var(--shadow-glow-green)' : 'none',
-                borderColor: isGoing ? 'var(--accent-green)' : 'var(--border-glass)',
-                color: isGoing ? 'white' : 'var(--text-secondary)'
-              }}
-              onClick={() => onToggleParticipation(event.id, 'going')}
-            >
-              <Check size={14} /> {isGoing ? (language === 'en' ? 'Going' : 'Ci sarò') : (language === 'en' ? 'Join' : 'Partecipa')}
-            </button>
+                <button 
+                  className={`btn btn-small ${isGoing ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ 
+                    padding: '6px 10px', 
+                    backgroundColor: isGoing ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                    boxShadow: isGoing ? 'var(--shadow-glow-green)' : 'none',
+                    borderColor: isGoing ? 'var(--accent-green)' : 'var(--border-glass)',
+                    color: isGoing ? 'white' : 'var(--text-secondary)'
+                  }}
+                  onClick={() => onToggleParticipation(event.id, 'going')}
+                >
+                  <Check size={14} /> {isGoing ? (language === 'en' ? 'Going' : 'Ci sarò') : (language === 'en' ? 'Join' : 'Partecipa')}
+                </button>
+              </>
+            )}
           </div>
         </div>
 

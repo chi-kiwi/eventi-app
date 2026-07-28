@@ -83,9 +83,6 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
               <span className="header-user-name" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 {user.name}
               </span>
-              {user.premium && (
-                <span className="verified-badge" style={{ marginLeft: '-2px' }} title="Verificato">✓</span>
-              )}
             </div>
           </div>
         )}

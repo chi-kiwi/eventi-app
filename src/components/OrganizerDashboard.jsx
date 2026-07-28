@@ -607,10 +607,11 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                         <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Panini / Piatti Cibo</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                           <input 
-                            type="number" 
+                            type="text" 
+                            inputMode="decimal"
                             className="form-input" 
                             value={sandwiches}
-                            onChange={(e) => handleUpdateCustomStock('sandwiches', e.target.value)}
+                            onChange={(e) => handleUpdateCustomStock('sandwiches', e.target.value.replace(',', '.'))}
                             style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-orange)', width: '80px' }}
                           />
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>porzioni</span>
@@ -622,10 +623,11 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                         <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Bevande / Birra</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                           <input 
-                            type="number" 
+                            type="text" 
+                            inputMode="decimal"
                             className="form-input" 
                             value={beerLiters}
-                            onChange={(e) => handleUpdateCustomStock('beerLiters', e.target.value)}
+                            onChange={(e) => handleUpdateCustomStock('beerLiters', e.target.value.replace(',', '.'))}
                             style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-primary)', width: '80px' }}
                           />
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Litri</span>
@@ -637,10 +639,11 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                         <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Contorni / Snack</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                           <input 
-                            type="number" 
+                            type="text" 
+                            inputMode="decimal"
                             className="form-input" 
                             value={friesPortions}
-                            onChange={(e) => handleUpdateCustomStock('friesPortions', e.target.value)}
+                            onChange={(e) => handleUpdateCustomStock('friesPortions', e.target.value.replace(',', '.'))}
                             style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--accent-green)', width: '80px' }}
                           />
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>porzioni</span>
@@ -652,10 +655,11 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                         <label style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>Posti / Tavoli</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                           <input 
-                            type="number" 
+                            type="text" 
+                            inputMode="decimal"
                             className="form-input" 
                             value={tablesNeeded}
-                            onChange={(e) => handleUpdateCustomStock('tablesNeeded', e.target.value)}
+                            onChange={(e) => handleUpdateCustomStock('tablesNeeded', e.target.value.replace(',', '.'))}
                             style={{ padding: '4px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', width: '80px' }}
                           />
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>tavoli</span>

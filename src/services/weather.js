@@ -1,68 +1,92 @@
 // Weather Service using Open-Meteo Free API with offline/fallback simulation
 
-export async function fetchLiveWeather(lat, lng) {
+export async function fetchLiveWeather(lat, lng, eventDateStr = null) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&hourly=precipitation_probability,relative_humidity_2m`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=16&timezone=auto`;
     const response = await fetch(url);
     if (!response.ok) throw new Error("Weather API network response failed");
     
     const data = await response.json();
-    const current = data.current_weather;
-    const temp = Math.round(current.temperature);
-    const wind = Math.round(current.windspeed);
-    const weatherCode = current.weathercode;
     
-    // Map WMO weather codes to emojis & text
+    let targetTemp = null;
+    let targetWeatherCode = null;
+    let rainProb = 0;
+    let foundDateForecast = false;
+
+    if (eventDateStr && data.daily && Array.isArray(data.daily.time)) {
+      const idx = data.daily.time.indexOf(eventDateStr);
+      if (idx !== -1) {
+        foundDateForecast = true;
+        const maxT = Math.round(data.daily.temperature_2m_max[idx]);
+        const minT = Math.round(data.daily.temperature_2m_min[idx]);
+        targetTemp = `${minT}° / ${maxT}°C`;
+        targetWeatherCode = data.daily.weathercode[idx];
+        rainProb = data.daily.precipitation_probability_max[idx] || 0;
+      }
+    }
+
+    // If event date is not in forecast range or not found, return "In aggiornamento"
+    if (eventDateStr && !foundDateForecast) {
+      return {
+        temp: "--°C",
+        icon: "🌤️",
+        descIt: "Meteo in aggiornamento",
+        descEn: "Forecast Updating Soon",
+        wind: "-- km/h",
+        rainProb: "--",
+        isLive: false
+      };
+    }
+
+    // Current weather fallback
+    if (targetWeatherCode === null && data.current_weather) {
+      targetWeatherCode = data.current_weather.weathercode;
+      targetTemp = `${Math.round(data.current_weather.temperature)}°C`;
+    }
+
     let icon = "☀️";
     let descIt = "Sereno";
     let descEn = "Clear";
-    let rainProb = 0;
 
-    if (data.hourly && data.hourly.precipitation_probability) {
-      rainProb = data.hourly.precipitation_probability[0] || 0;
-    }
-
-    if (weatherCode === 0) {
+    if (targetWeatherCode === 0) {
       icon = "☀️";
       descIt = "Sereno";
       descEn = "Sunny";
-    } else if (weatherCode >= 1 && weatherCode <= 3) {
+    } else if (targetWeatherCode >= 1 && targetWeatherCode <= 3) {
       icon = "⛅";
       descIt = "Poco Nuvoloso";
       descEn = "Partly Cloudy";
-    } else if (weatherCode >= 45 && weatherCode <= 48) {
+    } else if (targetWeatherCode >= 45 && targetWeatherCode <= 48) {
       icon = "🌫️";
       descIt = "Nebbia";
       descEn = "Foggy";
-    } else if (weatherCode >= 51 && weatherCode <= 67) {
+    } else if (targetWeatherCode >= 51 && targetWeatherCode <= 67) {
       icon = "🌧️";
       descIt = "Pioggia Leggera";
       descEn = "Light Rain";
-    } else if (weatherCode >= 80 && weatherCode <= 99) {
+    } else if (targetWeatherCode >= 80 && targetWeatherCode <= 99) {
       icon = "⛈️";
       descIt = "Temporale";
       descEn = "Thunderstorm";
     }
 
     return {
-      temp: `${temp}°C`,
+      temp: targetTemp || "20°C",
       icon,
       descIt,
       descEn,
-      wind: `${wind} km/h`,
+      wind: data.current_weather ? `${Math.round(data.current_weather.windspeed)} km/h` : "10 km/h",
       rainProb: `${rainProb}%`,
       isLive: true
     };
   } catch (err) {
-    console.warn("Weather API fallback active:", err);
-    // Fallback simulation if offline or network failure
     return {
-      temp: "23°C",
-      icon: "☀️",
-      descIt: "Sereno",
-      descEn: "Clear",
-      wind: "10 km/h",
-      rainProb: "5%",
+      temp: "--°C",
+      icon: "🌤️",
+      descIt: "Meteo in aggiornamento",
+      descEn: "Forecast Updating Soon",
+      wind: "-- km/h",
+      rainProb: "--",
       isLive: false
     };
   }

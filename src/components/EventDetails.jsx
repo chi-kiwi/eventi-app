@@ -50,8 +50,21 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
   const [editAnimali, setEditAnimali] = useState(event.animali ?? true);
   const [editParcheggio, setEditParcheggio] = useState(event.parcheggio ?? true);
   const [editPoster, setEditPoster] = useState(event.poster || '');
-  const [editError, setEditError] = useState('');
-  const [editSuccess, setEditSuccess] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+
+  const handleSubmitReview = (e) => {
+    e.preventDefault();
+    if (!reviewText.trim() || !user) return;
+
+    const res = db.addEventReview(event.id, user.id, `${user.name} ${user.cognome}`, reviewRating, reviewText);
+    if (res.success) {
+      setReviewText('');
+      setReviewRating(5);
+      Object.assign(event, res.event);
+      if (onRefreshEvents) onRefreshEvents();
+    }
+  };
 
   // Sync edit states on event change
   useEffect(() => {
@@ -242,7 +255,7 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
     window.addEventListener('evt_community_updated', handleSync);
 
     if (event.gps) {
-      fetchLiveWeather(event.gps.lat, event.gps.lng).then(data => setLiveWeatherData(data));
+      fetchLiveWeather(event.gps.lat, event.gps.lng, event.date).then(data => setLiveWeatherData(data));
     }
 
     return () => {
@@ -1151,6 +1164,67 @@ END:VCALENDAR`;
             </div>
           ) : (
             <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{t('no_updates')}</p>
+          )}
+        </div>
+
+        {/* Participant Reviews & Rating Section */}
+        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            ⭐ {language === 'en' ? "Participant Reviews" : "Recensioni dei Partecipanti"} ({event.feedback?.length || 0})
+          </h3>
+
+          {user ? (
+            <form onSubmit={handleSubmitReview} style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Valutazione:</span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: 0 }}
+                    >
+                      {star <= reviewRating ? '⭐' : '☆'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <textarea 
+                className="form-input" 
+                placeholder={language === 'en' ? "Write your review about this event..." : "Scrivi la tua recensione o un commento sull'evento..."}
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                style={{ height: '60px', resize: 'none', fontSize: '12px' }}
+              />
+
+              <button type="submit" className="btn btn-primary btn-small" style={{ alignSelf: 'flex-end', fontSize: '12px' }}>
+                Invia Recensione ⭐
+              </button>
+            </form>
+          ) : (
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              Accedi per lasciare una recensione su questo evento.
+            </p>
+          )}
+
+          {event.feedback && event.feedback.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+              {event.feedback.map(rev => (
+                <div key={rev.id} className="glass-card" style={{ padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <strong style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{rev.userName}</strong>
+                    <span style={{ fontSize: '12px', color: '#f59e0b' }}>{"⭐".repeat(rev.rating)}</span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{rev.text}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Nessuna recensione pubblicata per questo evento.
+            </p>
           )}
         </div>
 
