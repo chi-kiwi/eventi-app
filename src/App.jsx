@@ -302,14 +302,17 @@ export default function App() {
 
   // Filter logic
   const getFilteredEvents = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
     return events.filter(e => {
-      // Check past events (hide them from normal explore feed, only show active ones)
-      const todayStr = new Date().toISOString().split('T')[0];
-      const isActive = e.date >= todayStr;
+      // Show events with future/today date OR any event created by current user
+      const isActive = !e.date || e.date >= todayStr || (currentUser && (e.organizerId === currentUser.id || currentUser.role === 'admin'));
       if (!isActive) return false;
 
-      const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            e.desc.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !searchQuery.trim() || 
+                            e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            e.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            e.location.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
       
       let matchesCategory = false;
       if (selectedCategory === '⚡ Stasera cosa faccio?') {
@@ -325,10 +328,14 @@ export default function App() {
       } else {
         matchesCategory = e.category === selectedCategory;
       }
+      if (!matchesCategory) return false;
       
-      const matchesRegion = selectedRegion === 'Tutti' || e.location.toLowerCase().includes(selectedRegion.toLowerCase());
+      const matchesRegion = selectedRegion === 'Tutti' || 
+                            (currentUser && e.organizerId === currentUser.id) ||
+                            (e.regione && e.regione.toLowerCase().includes(selectedRegion.toLowerCase())) ||
+                            e.location.toLowerCase().includes(selectedRegion.toLowerCase());
 
-      return matchesSearch && matchesCategory && matchesRegion;
+      return matchesRegion;
     });
   };
 
@@ -520,38 +527,53 @@ export default function App() {
                   {/* List / Map Conditional rendering */}
                   {exploreView === 'list' ? (
                     <div>
-                      {/* Non-intrusive feedback survey invitation banner */}
+                      {/* Clean Non-intrusive feedback survey invitation banner */}
                       {pendingFeedbackEvent && (
                         <div 
                           className="glass-panel" 
                           style={{ 
-                            padding: '12px 16px', 
-                            background: 'var(--gradient-premium)', 
-                            borderRadius: '12px', 
-                            marginBottom: '16px', 
+                            padding: '14px 18px', 
+                            background: 'var(--gradient-primary)', 
+                            borderRadius: '14px', 
+                            marginBottom: '20px', 
                             display: 'flex', 
-                            justifyContent: 'space-between', 
+                            flexWrap: 'wrap',
+                            gap: '12px',
                             alignItems: 'center',
+                            justifyContent: 'space-between',
                             boxShadow: 'var(--shadow-glow)',
-                            border: '1px solid rgba(255,255,255,0.1)'
+                            border: '1px solid rgba(255,255,255,0.2)'
                           }}
                         >
-                          <div style={{ flex: 1, marginRight: '12px' }}>
-                            <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ flex: '1 1 240px' }}>
+                            <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
                               <Sparkles size={16} /> {t('feedback_title')}
                             </h4>
-                            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', marginTop: '2px', lineHeight: '1.4' }}>
+                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.95)', marginTop: '4px', margin: '4px 0 0 0', lineHeight: '1.4' }}>
                               {language === 'en' 
                                 ? `Leave feedback for "${pendingFeedbackEvent.title}" and earn +50 XP!` 
                                 : `Lascia un feedback per "${pendingFeedbackEvent.title}" e ottieni +50 XP!`}
                             </p>
                           </div>
                           <button 
-                            className="btn btn-small" 
-                            style={{ background: 'white', color: 'var(--accent-primary)', fontSize: '11px', padding: '6px 12px', boxShadow: 'none' }}
+                            type="button"
+                            className="btn" 
+                            style={{ 
+                              width: 'auto',
+                              flexShrink: 0,
+                              background: '#ffffff', 
+                              color: 'var(--accent-primary)', 
+                              fontSize: '12px', 
+                              fontWeight: '700',
+                              padding: '8px 18px', 
+                              borderRadius: '20px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                              border: 'none',
+                              cursor: 'pointer'
+                            }}
                             onClick={() => setShowFeedbackModal(true)}
                           >
-                            {language === 'en' ? "Review" : "Recensisci"}
+                            {language === 'en' ? "Recensisci Ora ★" : "Recensisci Ora ★"}
                           </button>
                         </div>
                       )}
@@ -580,8 +602,24 @@ export default function App() {
                       </div>
 
                       {sortedEvents.length === 0 && (
-                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '14px' }}>
-                          {t('no_events')}
+                        <div style={{ textAlign: 'center', padding: '36px 20px', color: 'var(--text-muted)', fontSize: '14px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-glass)', marginTop: '12px' }}>
+                          <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>🔍</span>
+                          <p style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>{t('no_events')}</p>
+                          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                            Filtri attivi: <strong>Regione: {selectedRegion}</strong> • <strong>Categoria: {selectedCategory}</strong>
+                          </p>
+                          <button 
+                            type="button" 
+                            className="btn btn-primary"
+                            onClick={() => {
+                              setSelectedRegion('Tutti');
+                              setSelectedCategory('Tutti');
+                              setSearchQuery('');
+                            }}
+                            style={{ width: 'auto', padding: '8px 20px', margin: '0 auto', fontSize: '13px' }}
+                          >
+                            🔄 Mostra Tutti gli Eventi
+                          </button>
                         </div>
                       )}
                     </div>

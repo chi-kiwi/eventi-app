@@ -369,7 +369,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
 
     const res = db.createEvent(eventData, user.id);
     if (res.success) {
-      setFormSuccess("Evento creato con successo!");
+      setFormSuccess("🎉 Evento creato e pubblicato con successo nella community!");
       if (res.warning) {
         setFormWarning(res.warning);
       }
@@ -379,10 +379,14 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
 
       onRefreshEvents();
 
+      if (res.event && res.event.id) {
+        setSelectedEventId(res.event.id);
+      }
+
       // Reset fields
       setNewTitle('');
       setNewDesc('');
-      setNewDate('');
+      setNewDate(todayStr);
       setNewTime('');
       setNewLocation('');
       setNewLat('45.4642');

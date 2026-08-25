@@ -61,7 +61,108 @@ const DEFAULT_USERS = [
   }
 ];
 
-const DEFAULT_EVENTS = [];
+const DEFAULT_EVENTS = [
+  {
+    id: "evt_1",
+    title: "Sagra del Risotto e dei Formaggi Tipici",
+    desc: "Un viaggio enogastronomico tra le eccellenze del Piemonte! Degustazioni di risotto alle quaglie e toma valsesiana, musica dal vivo con orchestra ed area gioco per bambini. Ampio parcheggio gratuito a 50m.",
+    date: "2026-09-05",
+    time: "19:30",
+    location: "Piazza Garibaldi 15, Comignago (NO)",
+    gps: { lat: 45.7188, lng: 8.5639 },
+    category: "Feste di paese",
+    cost: "Gratuito",
+    maxCapacity: 300,
+    ticketUrl: "",
+    accessibili: true,
+    animali: true,
+    parcheggio: true,
+    poster: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800",
+    organizerId: "org_1",
+    goingUsers: ["usr_1"],
+    interestedUsers: ["col_1"],
+    savedUsers: ["usr_1"],
+    views: 42,
+    gallery: [
+      { id: "img_1", url: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800", uploaderId: "org_1", uploaderName: "Chiara Francescon", likes: ["usr_1"] }
+    ],
+    reviews: [
+      { id: "rev_1", userId: "usr_1", userName: "Marco Rossi", rating: 5, comment: "Evento fantastico! Cibo delizioso e bellissima atmosfera.", timestamp: "2026-08-20T14:30:00.000Z" }
+    ]
+  },
+  {
+    id: "evt_2",
+    title: "Milano Summer Night - Party & Street Food Festival",
+    desc: "Il festival estivo più atteso al Parco Sempione! Dj set dal vivo, food truck gourmet da tutta Italia, cocktail bar artigianale ed attrazioni per giovani e famiglie.",
+    date: "2026-09-12",
+    time: "18:00",
+    location: "Piazza Castello 1, Milano (MI)",
+    gps: { lat: 45.4705, lng: 9.1793 },
+    category: "Street food",
+    cost: "Ingresso Libero",
+    maxCapacity: 500,
+    ticketUrl: "",
+    accessibili: true,
+    animali: true,
+    parcheggio: true,
+    poster: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800",
+    organizerId: "org_1",
+    goingUsers: [],
+    interestedUsers: ["usr_1"],
+    savedUsers: [],
+    views: 28,
+    gallery: [],
+    reviews: []
+  },
+  {
+    id: "evt_3",
+    title: "Gran Galà della Musica Live & Dj Set",
+    desc: "Serata di musica dal vivo nei locali storici del centro con artisti emergenti, apericena a buffet e cocktail show a cura dei migliori barman della regione.",
+    date: "2026-09-18",
+    time: "21:00",
+    location: "Corso Vittorio Emanuele II 10, Torino (TO)",
+    gps: { lat: 45.0647, lng: 7.6831 },
+    category: "Musica",
+    cost: "15 € con consumazione",
+    maxCapacity: 200,
+    ticketUrl: "https://eventi-app-theta.vercel.app/",
+    accessibili: true,
+    animali: false,
+    parcheggio: true,
+    poster: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800",
+    organizerId: "org_1",
+    goingUsers: ["usr_1"],
+    interestedUsers: [],
+    savedUsers: ["usr_1"],
+    views: 65,
+    gallery: [],
+    reviews: []
+  },
+  {
+    id: "evt_4",
+    title: "Raduno Auto d'Epoca e Motori della Valpadana",
+    desc: "Sfilata ed esposizione delle auto d'epoca più affascinanti dagli anni '50 agli anni '90. Premiazione del veicolo più votato dal pubblico e stands gastronomici.",
+    date: "2026-09-25",
+    time: "10:00",
+    location: "Piazza Duomo 1, Novara (NO)",
+    gps: { lat: 45.4469, lng: 8.6212 },
+    category: "Motori",
+    cost: "Gratuito",
+    maxCapacity: 150,
+    ticketUrl: "",
+    accessibili: true,
+    animali: true,
+    parcheggio: true,
+    poster: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800",
+    organizerId: "org_1",
+    goingUsers: [],
+    interestedUsers: [],
+    savedUsers: [],
+    views: 19,
+    gallery: [],
+    reviews: []
+  }
+];
 
 const DEFAULT_MESSAGES = [
   {
@@ -194,20 +295,20 @@ class LocalDB {
 
     // One-time migration to clear mock events and start clean
     if (!localStorage.getItem("evt_production_ready")) {
-      localStorage.setItem("evt_events", JSON.stringify([]));
+      localStorage.setItem("evt_events", JSON.stringify(DEFAULT_EVENTS));
       localStorage.setItem("evt_production_ready", "true");
     }
 
     try {
       if (!localStorage.getItem("evt_events")) {
-        localStorage.setItem("evt_events", JSON.stringify([]));
+        localStorage.setItem("evt_events", JSON.stringify(DEFAULT_EVENTS));
       } else {
         let storedEvents = localStorage.getItem("evt_events");
         if (storedEvents) {
           let parsed = JSON.parse(storedEvents);
           if (!Array.isArray(parsed)) {
-            localStorage.setItem("evt_events", JSON.stringify([]));
-            parsed = [];
+            localStorage.setItem("evt_events", JSON.stringify(DEFAULT_EVENTS));
+            parsed = DEFAULT_EVENTS;
           }
           let updated = false;
           parsed.forEach(e => {
@@ -288,9 +389,14 @@ class LocalDB {
 
   getEvents() {
     try {
-      return JSON.parse(localStorage.getItem("evt_events") || "[]");
+      const events = JSON.parse(localStorage.getItem("evt_events") || "[]");
+      if (!Array.isArray(events) || events.length === 0) {
+        localStorage.setItem("evt_events", JSON.stringify(DEFAULT_EVENTS));
+        return DEFAULT_EVENTS;
+      }
+      return events;
     } catch (e) {
-      return [];
+      return DEFAULT_EVENTS;
     }
   }
 
@@ -486,9 +592,14 @@ class LocalDB {
       ? `Attenzione: Nello stesso raggio di ${targetCategory === 'Feste nei locali' ? '5' : '20'} km risulta già un evento compatibile ("${nearbyEvents[0].title}") lo stesso giorno.`
       : null;
 
+    const users = this.getUsers();
+    const organizer = users.find(u => u.id === organizerId);
+    const inferredRegion = eventData.regione || organizer?.regione || "Piemonte";
+
     const newEvent = {
       id: "evt_" + Date.now(),
       ...eventData,
+      regione: inferredRegion,
       organizerId,
       views: 0,
       interestedUsers: [],
