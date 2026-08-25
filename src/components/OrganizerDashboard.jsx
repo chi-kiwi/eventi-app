@@ -147,11 +147,21 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       return;
     }
 
-    const localMatches = searchItalianComuni(query);
+    const cleanQuery = query.trim();
+    const localMatches = searchItalianComuni(cleanQuery);
+
+    // Always create a custom item for whatever the user is typing so street addresses never fail
+    const customUserOption = {
+      label: cleanQuery,
+      fullTitle: `📍 Conferma indirizzo inserito: "${cleanQuery}"`,
+      lat: newLat || '45.4642',
+      lng: newLng || '9.1900',
+      isCustom: true
+    };
 
     try {
       setIsGeoLoading(true);
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(query.trim() + ', Italia')}&limit=5`, {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(cleanQuery + ', Italia')}&limit=5`, {
         headers: { 'User-Agent': 'EventiApp/1.0 (admin@eventiapp.com)' }
       });
       const data = await response.json();
@@ -189,7 +199,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
         });
       }
 
-      const combined = [...remoteMatches, ...localMatches];
+      const combined = [customUserOption, ...remoteMatches, ...localMatches];
       const seen = new Set();
       const uniqueSuggestions = combined.filter(item => {
         if (seen.has(item.label)) return false;
@@ -199,7 +209,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
 
       setGeoSuggestions(uniqueSuggestions.slice(0, 6));
     } catch (e) {
-      setGeoSuggestions(localMatches.slice(0, 5));
+      setGeoSuggestions([customUserOption, ...localMatches.slice(0, 5)]);
     } finally {
       setIsGeoLoading(false);
     }
@@ -211,6 +221,48 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     setNewLng(item.lng);
     setGeoDetails(`${item.fullTitle} • GPS: ${item.lat}, ${item.lng}`);
     setGeoSuggestions([]);
+  };
+
+  // Auto GPS Location button handler
+  const handleUseCurrentGpsLocation = () => {
+    if (!navigator.geolocation) {
+      alert("La geolocalizzazione non è supportata dal tuo browser.");
+      return;
+    }
+    setIsGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const latStr = pos.coords.latitude.toFixed(4);
+        const lngStr = pos.coords.longitude.toFixed(4);
+        setNewLat(latStr);
+        setNewLng(lngStr);
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latStr}&lon=${lngStr}&addressdetails=1`);
+          const data = await res.json();
+          if (data && data.display_name) {
+            const addr = data.address || {};
+            const road = addr.road || addr.pedestrian || '';
+            const house = addr.house_number || '';
+            const town = addr.village || addr.town || addr.city || '';
+            const formatted = [road, house, town].filter(Boolean).join(' ');
+            const finalAddr = formatted.length > 3 ? formatted : data.display_name.split(',').slice(0, 2).join(',');
+            setNewLocation(finalAddr);
+            setGeoDetails(`📍 Posizione GPS attuale: ${finalAddr} (${latStr}, ${lngStr})`);
+          } else {
+            setGeoDetails(`📍 Posizione GPS rilevata: ${latStr}, ${lngStr}`);
+          }
+        } catch (e) {
+          setGeoDetails(`📍 Posizione GPS rilevata: ${latStr}, ${lngStr}`);
+        } finally {
+          setIsGeoLoading(false);
+        }
+      },
+      (err) => {
+        setIsGeoLoading(false);
+        alert("Impossibile accedere alla posizione GPS. Verifica i permessi del dispositivo.");
+      }
+    );
   };
 
   // Dynamic Geocoding fallback
@@ -239,11 +291,10 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
         const latStr = parseFloat(item.lat).toFixed(4);
         const lngStr = parseFloat(item.lon).toFixed(4);
 
-        setNewLocation(formattedLabel);
         setNewLat(latStr);
         setNewLng(lngStr);
-        setGeoDetails(`${formattedLabel}, ${state} • GPS: ${latStr}, ${lngStr}`);
-        return { lat: latStr, lng: lngStr, label: formattedLabel };
+        setGeoDetails(`${address} • GPS: ${latStr}, ${lngStr}`);
+        return { lat: latStr, lng: lngStr, label: address };
       }
     } catch (e) {
       console.error("Geocoding failed:", e);
@@ -276,7 +327,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       desc: newDesc,
       date: newDate,
       time: newTime,
-      location: geoRes?.label || newLocation,
+      location: newLocation,
       gps: { lat: parseFloat(currentLat), lng: parseFloat(currentLng) },
       category: newCategory,
       cost: newCost,
@@ -507,14 +558,34 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
               {myEvents.length === 0 && <option>Nessun evento organizzato</option>}
             </select>
             {activeEvent && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-small"
-                onClick={() => onSelectEvent && onSelectEvent(activeEvent)}
-                style={{ marginTop: '8px', width: '100%', fontSize: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
-              >
-                ✏️ Modifica Dettagli / Locandina di Questo Evento
-              </button>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-small"
+                  onClick={() => onSelectEvent && onSelectEvent(activeEvent)}
+                  style={{ flex: 1, fontSize: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+                >
+                  ✏️ Modifica / Dettagli
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger btn-small"
+                  onClick={() => {
+                    const confirmDel = window.confirm("Sei sicuro di voler eliminare definitivamente questo evento? L'azione non è reversibile.");
+                    if (!confirmDel) return;
+                    const res = db.deleteEvent(activeEvent.id, user.id);
+                    if (res.success) {
+                      alert(res.message);
+                      if (onRefreshEvents) onRefreshEvents();
+                    } else {
+                      alert(res.message);
+                    }
+                  }}
+                  style={{ flex: 1, fontSize: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+                >
+                  <Trash2 size={14} /> Elimina Evento
+                </button>
+              </div>
             )}
           </div>
 
@@ -781,7 +852,17 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
           </div>
 
           <div className="form-group" style={{ position: 'relative' }}>
-            <label className="form-label">Indirizzo Completo dell'Evento (Via, N. Civico, Comune)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>Indirizzo Completo dell'Evento (Via, N. Civico, Comune)</label>
+              <button
+                type="button"
+                onClick={handleUseCurrentGpsLocation}
+                style={{ background: 'rgba(255, 71, 87, 0.1)', border: '1px solid var(--border-glass)', color: 'var(--accent-primary)', cursor: 'pointer', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                title="Usa la posizione GPS attuale"
+              >
+                📍 Usa Posizione GPS
+              </button>
+            </div>
             <input 
               type="text" 
               className="form-input" 

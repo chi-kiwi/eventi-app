@@ -265,6 +265,19 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
     };
   }, [event.id, event.gps]);
 
+  // Hash URL Deep linking sync
+  useEffect(() => {
+    if (event && event.id) {
+      window.location.hash = `#event/${event.id}`;
+    }
+    return () => {
+      // Clear hash if going back
+      if (window.location.hash.startsWith('#event/')) {
+        window.history.replaceState(null, null, ' ');
+      }
+    };
+  }, [event?.id]);
+
   const users = db.getUsers();
   const organizer = users.find(u => u.id === event.organizerId);
   const isOrganizerPremium = organizer?.premium;
@@ -275,7 +288,9 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
 
   const canEdit = user && (
     event.organizerId === user.id || 
-    (user.role === 'collaboratore' && event.organizerId === user.invitedBy)
+    (user.role === 'collaboratore' && event.organizerId === user.invitedBy) ||
+    user.email === 'chiara@eventiapp.com' ||
+    user.role === 'admin'
   );
 
   // Generate calendar export links
@@ -486,13 +501,23 @@ END:VCALENDAR`;
           <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{language === 'en' ? "Event Details" : "Dettaglio Evento"}</span>
         </div>
         {canEdit && (
-          <button 
-            onClick={() => setShowEditModal(true)}
-            className="btn btn-secondary btn-small"
-            style={{ width: 'auto', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
-          >
-            ✏️ {language === 'en' ? "Edit Event" : "Modifica Evento"}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={() => setShowEditModal(true)}
+              className="btn btn-secondary btn-small"
+              style={{ width: 'auto', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+            >
+              ✏️ {language === 'en' ? "Edit Event" : "Modifica Evento"}
+            </button>
+            <button 
+              onClick={handleDeleteEvent}
+              className="btn btn-danger btn-small"
+              style={{ width: 'auto', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+              title={language === 'en' ? "Delete Event" : "Elimina Evento"}
+            >
+              <Trash2 size={14} /> {language === 'en' ? "Delete" : "Elimina"}
+            </button>
+          </div>
         )}
       </div>
 

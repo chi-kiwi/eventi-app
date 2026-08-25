@@ -11,6 +11,9 @@ import OrganizerDashboard from './components/OrganizerDashboard';
 import ProfileTab from './components/ProfileTab';
 import FeedbackModal from './components/FeedbackModal';
 import CalendarTab from './components/CalendarTab';
+import LandingPage from './components/LandingPage';
+import PrivacyModal from './components/PrivacyModal';
+import CookieBanner from './components/CookieBanner';
 import { Search, MapPin, Grid, Map, Sparkles } from 'lucide-react';
 import { useLanguage } from './services/i18n.jsx';
 
@@ -34,6 +37,11 @@ export default function App() {
   const [exploreView, setExploreView] = useState('list'); // list, map
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [leagueMemeCelebration, setLeagueMemeCelebration] = useState(null);
+
+  // Unauthenticated landing page & Auth modal states
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -127,6 +135,25 @@ export default function App() {
       console.error("Error parsing stored user:", e);
       localStorage.removeItem("evt_current_user");
     }
+  }, []);
+
+  // Handle Hash URL Deep linking (e.g. #event/evt_1) and page refresh
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash && hash.startsWith('#event/')) {
+        const eventId = hash.replace('#event/', '');
+        const allEvts = db.getEvents();
+        const found = allEvts.find(e => e.id === eventId);
+        if (found) {
+          setSelectedEvent(found);
+        }
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   const handleLoginSuccess = (user) => {
@@ -613,9 +640,59 @@ export default function App() {
           <NavBar currentTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); setSelectedEvent(null); }} userRole={currentUser.role} />
         </>
       ) : (
-        // LOGIN / REGISTER SCREEN
-        <LoginRegistration onLoginSuccess={handleLoginSuccess} theme={theme} onToggleTheme={toggleTheme} />
+        // PUBLIC / UNAUTHENTICATED FLOW
+        selectedEvent ? (
+          <div style={{ maxWidth: '800px', margin: '0 auto', minHeight: '100vh', background: 'var(--bg-primary)' }}>
+            <EventDetails 
+              event={selectedEvent} 
+              user={null} 
+              onBack={() => { setSelectedEvent(null); window.history.replaceState(null, null, ' '); }} 
+              onToggleParticipation={() => { setShowAuthModal(true); setAuthMode('login'); }}
+              onStartChat={() => { setShowAuthModal(true); setAuthMode('login'); }}
+              onProfileUpdated={() => {}}
+              onRefreshEvents={handleRefreshEvents}
+            />
+          </div>
+        ) : showAuthModal ? (
+          <div style={{ position: 'relative' }}>
+            <button 
+              type="button" 
+              onClick={() => setShowAuthModal(false)}
+              className="btn btn-secondary btn-small"
+              style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, width: 'auto', padding: '6px 14px' }}
+            >
+              ← Torna alla Home
+            </button>
+            <LoginRegistration 
+              initialMode={authMode}
+              onLoginSuccess={(u) => { setShowAuthModal(false); handleLoginSuccess(u); }} 
+              theme={theme} 
+              onToggleTheme={toggleTheme} 
+            />
+          </div>
+        ) : (
+          <LandingPage 
+            events={events}
+            onOpenLogin={() => { setAuthMode('login'); setShowAuthModal(true); }}
+            onOpenRegister={() => { setAuthMode('register'); setShowAuthModal(true); }}
+            onSelectEvent={handleSelectEvent}
+            onOpenPrivacy={() => setIsPrivacyModalOpen(true)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
+        )
       )}
+
+      {/* Global Privacy Modal & Cookie Consent Banner */}
+      <PrivacyModal 
+        isOpen={isPrivacyModalOpen} 
+        onClose={() => setIsPrivacyModalOpen(false)} 
+      />
+
+      <CookieBanner 
+        onOpenPrivacy={() => setIsPrivacyModalOpen(true)} 
+      />
+
     </div>
   );
 }

@@ -1253,6 +1253,72 @@ class LocalDB {
       this.saveEvents(events);
     }
   }
+
+  // Delete Event (Organizer, Collaborator, or Admin)
+  deleteEvent(eventId, userId) {
+    const events = this.getEvents();
+    const users = this.getUsers();
+    const eventIndex = events.findIndex(e => e.id === eventId);
+    if (eventIndex === -1) {
+      return { success: false, message: "Evento non trovato." };
+    }
+
+    const eventObj = events[eventIndex];
+    const requestingUser = users.find(u => u.id === userId);
+    
+    // Check permission: Owner, Invited Collaborator, or Admin/Chiara
+    const isOwner = eventObj.organizerId === userId;
+    const isCollab = requestingUser && requestingUser.role === 'collaboratore' && requestingUser.invitedBy === eventObj.organizerId;
+    const isAdmin = requestingUser && (requestingUser.email === 'chiara@eventiapp.com' || requestingUser.role === 'admin');
+
+    if (!isOwner && !isCollab && !isAdmin) {
+      return { success: false, message: "Autorizzazione negata: solo l'organizzatore o l'amministratore possono eliminare questo evento." };
+    }
+
+    // Remove event
+    events.splice(eventIndex, 1);
+    this.saveEvents(events);
+
+    // Clean community chat messages for deleted event
+    try {
+      const commMsgs = JSON.parse(localStorage.getItem('evt_community_messages') || '[]');
+      const filtered = commMsgs.filter(m => m.eventId !== eventId);
+      localStorage.setItem('evt_community_messages', JSON.stringify(filtered));
+    } catch (e) {}
+
+    return { success: true, message: "Evento eliminato con successo." };
+  }
+
+  // Update User Bio
+  updateUserBio(userId, bioText) {
+    const users = this.getUsers();
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex === -1) return { success: false, message: "Utente non trovato." };
+
+    const bio = (bioText || "").substring(0, 250);
+    users[userIndex].bio = bio;
+    this.saveUsers(users);
+    return { success: true, user: users[userIndex] };
+  }
+
+  // Password reset request by email
+  requestPasswordResetEmail(emailInput) {
+    const users = this.getUsers();
+    const cleanEmail = (emailInput || "").toLowerCase().trim();
+    const user = users.find(u => u.email.toLowerCase() === cleanEmail);
+    if (!user) {
+      return { success: false, message: "Indirizzo e-mail non trovato nel sistema." };
+    }
+
+    // Generate a temporary 6-digit reset code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    return {
+      success: true,
+      message: `Codice di recupero inviato all'indirizzo ${user.email}. Usa il codice per impostare una nuova password.`,
+      email: user.email,
+      resetCode
+    };
+  }
 }
 
 export const db = new LocalDB();

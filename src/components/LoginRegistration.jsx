@@ -4,9 +4,9 @@ import { db } from '../services/db';
 import LegalModal from './LegalModal';
 import { useLanguage } from '../services/i18n.jsx';
 
-export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme }) {
+export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme, initialMode = 'login' }) {
   const { language, setLanguage, t } = useLanguage();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [isRecover, setIsRecover] = useState(false);
   const [verifyStep, setVerifyStep] = useState(false); // verification flow
   const [tempUser, setTempUser] = useState(null); // hold registered user before verify

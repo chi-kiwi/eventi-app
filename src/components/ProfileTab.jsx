@@ -12,8 +12,10 @@ export default function ProfileTab({ user, onProfileUpdated }) {
   const [regione, setRegione] = useState(user?.regione || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [bio, setBio] = useState(user?.bio || '');
   const [password, setPassword] = useState(''); // empty by default for safety
   const [interests, setInterests] = useState(user?.interests || []);
+  const [pushNotifsEnabled, setPushNotifsEnabled] = useState(() => typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted');
   
   // Security confirmation password
   const [currentPasswordConfirm, setCurrentPasswordConfirm] = useState('');
@@ -152,6 +154,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
       comune,
       regione,
       phone,
+      bio,
       interests
     };
 
@@ -173,6 +176,10 @@ export default function ProfileTab({ user, onProfileUpdated }) {
 
     const res = db.updateProfile(user.id, pendingUpdatedFields, user.password);
     if (res.success) {
+      if (pendingUpdatedFields.bio !== undefined) {
+        db.updateUserBio(user.id, pendingUpdatedFields.bio);
+        res.user.bio = pendingUpdatedFields.bio;
+      }
       setProfileSuccess(language === 'en' ? "Profile updated successfully!" : "Profilo aggiornato con successo!");
       setShowOtpModal(false);
       setShowEditProfileModal(false);
@@ -328,6 +335,16 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                   📋
                 </button>
               </div>
+              {/* User Bio Card */}
+              {user.bio ? (
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: '10px', background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '8px', borderLeft: '3px solid var(--accent-primary)', margin: '10px 0 0 0' }}>
+                  "{user.bio}"
+                </p>
+              ) : (
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '8px', margin: '8px 0 0 0' }}>
+                  Aggiungi una biografia per presentarti alla community!
+                </p>
+              )}
             </div>
           </div>
 
@@ -337,6 +354,7 @@ export default function ProfileTab({ user, onProfileUpdated }) {
               setRegione(user?.regione || '');
               setPhone(user?.phone || '');
               setEmail(user?.email || '');
+              setBio(user?.bio || '');
               setInterests(user?.interests || []);
               setProfileError('');
               setProfileSuccess('');
@@ -703,6 +721,53 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                 <div style={{ position: 'relative' }}>
                   <Phone size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
                   <input type="tel" className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ paddingLeft: '40px' }} />
+                </div>
+              </div>
+
+              {/* Bio Field */}
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label">Biografia / Presentazione</label>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{bio.length}/250</span>
+                </div>
+                <textarea 
+                  className="form-input" 
+                  placeholder="Scrivi una breve biografia per farti conoscere nella community..." 
+                  maxLength={250}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  style={{ height: '75px', resize: 'none', fontSize: '13px' }}
+                />
+              </div>
+
+              {/* Push & Email Notifications toggle */}
+              <div className="form-group" style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+                <label className="form-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🔔 Impostazioni Notifiche
+                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Notifiche Push nel Browser</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && 'Notification' in window) {
+                        Notification.requestPermission().then(permission => {
+                          setPushNotifsEnabled(permission === 'granted');
+                          if (permission === 'granted') {
+                            alert("Notifiche Push nel browser abilitate con successo!");
+                          } else {
+                            alert("Notifiche disattivate nelle impostazioni del browser.");
+                          }
+                        });
+                      } else {
+                        alert("Il tuo browser non supporta le notifiche push.");
+                      }
+                    }}
+                    className={`btn btn-small ${pushNotifsEnabled ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '4px 12px', fontSize: '11px' }}
+                  >
+                    {pushNotifsEnabled ? '✓ Attive' : 'Attiva Notifiche'}
+                  </button>
                 </div>
               </div>
 
