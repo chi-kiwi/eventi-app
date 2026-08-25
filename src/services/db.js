@@ -61,147 +61,9 @@ const DEFAULT_USERS = [
   }
 ];
 
-const DEFAULT_EVENTS = [
-  {
-    id: "evt_1",
-    title: "Sagra del Risotto e dei Formaggi Tipici",
-    desc: "Un viaggio enogastronomico tra le eccellenze del Piemonte! Degustazioni di risotto alle quaglie e toma valsesiana, musica dal vivo con orchestra ed area gioco per bambini. Ampio parcheggio gratuito a 50m.",
-    date: "2026-09-05",
-    time: "19:30",
-    location: "Piazza Garibaldi 15, Comignago (NO)",
-    citta: "Comignago",
-    provincia: "NO",
-    regione: "Piemonte",
-    gps: { lat: 45.7188, lng: 8.5639 },
-    category: "Feste di paese",
-    cost: "Gratuito",
-    maxCapacity: 300,
-    status: "pubblicato",
-    visibilita: "pubblico",
-    ticketUrl: "",
-    accessibili: true,
-    animali: true,
-    parcheggio: true,
-    poster: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800",
-    organizerId: "org_1",
-    goingUsers: ["usr_1"],
-    interestedUsers: ["col_1"],
-    savedUsers: ["usr_1"],
-    views: 42,
-    gallery: [
-      { id: "img_1", url: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800", uploaderId: "org_1", uploaderName: "Chiara Francescon", likes: ["usr_1"] }
-    ],
-    reviews: [
-      { id: "rev_1", userId: "usr_1", userName: "Marco Rossi", rating: 5, comment: "Evento fantastico! Cibo delizioso e bellissima atmosfera.", timestamp: "2026-08-20T14:30:00.000Z" }
-    ]
-  },
-  {
-    id: "evt_2",
-    title: "Milano Summer Night - Party & Street Food Festival",
-    desc: "Il festival estivo più atteso al Parco Sempione! Dj set dal vivo, food truck gourmet da tutta Italia, cocktail bar artigianale ed attrazioni per giovani e famiglie.",
-    date: "2026-09-12",
-    time: "18:00",
-    location: "Piazza Castello 1, Milano (MI)",
-    citta: "Milano",
-    provincia: "MI",
-    regione: "Lombardia",
-    gps: { lat: 45.4705, lng: 9.1793 },
-    category: "Street food",
-    cost: "Ingresso Libero",
-    maxCapacity: 500,
-    status: "pubblicato",
-    visibilita: "pubblico",
-    ticketUrl: "",
-    accessibili: true,
-    animali: true,
-    parcheggio: true,
-    poster: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=800",
-    organizerId: "org_1",
-    goingUsers: [],
-    interestedUsers: ["usr_1"],
-    savedUsers: [],
-    views: 28,
-    gallery: [],
-    reviews: []
-  },
-  {
-    id: "evt_3",
-    title: "Gran Galà della Musica Live & Dj Set",
-    desc: "Serata di musica dal vivo nei locali storici del centro con artisti emergenti, apericena a buffet e cocktail show a cura dei migliori barman della regione.",
-    date: "2026-09-18",
-    time: "21:00",
-    location: "Corso Vittorio Emanuele II 10, Torino (TO)",
-    citta: "Torino",
-    provincia: "TO",
-    regione: "Piemonte",
-    gps: { lat: 45.0647, lng: 7.6831 },
-    category: "Musica",
-    cost: "15 € con consumazione",
-    maxCapacity: 200,
-    status: "pubblicato",
-    visibilita: "pubblico",
-    ticketUrl: "https://eventi-app-theta.vercel.app/",
-    accessibili: true,
-    animali: false,
-    parcheggio: true,
-    poster: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800",
-    organizerId: "org_1",
-    goingUsers: ["usr_1"],
-    interestedUsers: [],
-    savedUsers: ["usr_1"],
-    views: 65,
-    gallery: [],
-    reviews: []
-  },
-  {
-    id: "evt_4",
-    title: "Raduno Auto d'Epoca e Motori della Valpadana",
-    desc: "Sfilata ed esposizione delle auto d'epoca più affascinanti dagli anni '50 agli anni '90. Premiazione del veicolo più votato dal pubblico e stands gastronomici.",
-    date: "2026-09-25",
-    time: "10:00",
-    location: "Piazza Duomo 1, Novara (NO)",
-    citta: "Novara",
-    provincia: "NO",
-    regione: "Piemonte",
-    gps: { lat: 45.4469, lng: 8.6212 },
-    category: "Motori",
-    cost: "Gratuito",
-    maxCapacity: 150,
-    status: "pubblicato",
-    visibilita: "pubblico",
-    ticketUrl: "",
-    accessibili: true,
-    animali: true,
-    parcheggio: true,
-    poster: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800",
-    organizerId: "org_1",
-    goingUsers: [],
-    interestedUsers: [],
-    savedUsers: [],
-    views: 19,
-    gallery: [],
-    reviews: []
-  }
-];
+const DEFAULT_EVENTS = [];
 
-const DEFAULT_MESSAGES = [
-  {
-    id: "msg_1",
-    eventId: "evt_1",
-    senderId: "usr_1",
-    receiverId: "org_1",
-    message: "Ciao! Ci saranno parcheggi per disabili vicino all'ingresso?",
-    timestamp: new Date(Date.now() - 3600000).toISOString()
-  },
-  {
-    id: "msg_2",
-    eventId: "evt_1",
-    senderId: "org_1",
-    receiverId: "usr_1",
-    message: "Sì, Chiara. C'è un'area riservata in via Roma, a circa 50 metri dall'evento. Ti aspettiamo!",
-    timestamp: new Date(Date.now() - 1800000).toISOString()
-  }
-];
+const DEFAULT_MESSAGES = [];
 
 // Helper to calculate distance in km using Haversine
 export function getDistance(lat1, lon1, lat2, lon2) {
@@ -410,13 +272,12 @@ class LocalDB {
   getEvents() {
     try {
       const events = JSON.parse(localStorage.getItem("evt_events") || "[]");
-      if (!Array.isArray(events) || events.length === 0) {
-        localStorage.setItem("evt_events", JSON.stringify(DEFAULT_EVENTS));
-        return DEFAULT_EVENTS;
+      if (!Array.isArray(events)) {
+        return [];
       }
       return events;
     } catch (e) {
-      return DEFAULT_EVENTS;
+      return [];
     }
   }
 

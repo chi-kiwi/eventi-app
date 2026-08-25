@@ -43,33 +43,43 @@ export default function EventCard({ event, user, onSelect, onToggleParticipation
     return c;
   };
 
+  const fallbackPoster = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600";
+
   return (
     <div 
       className="glass-card animate-slide-in" 
       onClick={() => onSelect(event)}
-      style={{ overflow: 'hidden', cursor: 'pointer', marginBottom: '16px', display: 'flex', flexDirection: 'column' }}
+      style={{ overflow: 'hidden', cursor: 'pointer', marginBottom: '16px', display: 'flex', flexDirection: 'column', height: '100%' }}
     >
-      {event.poster && (
-        <div style={{ position: 'relative' }}>
-          <img 
-            src={event.poster} 
-            alt={event.title} 
-            className="event-poster" 
-            onError={(e) => { e.target.onerror = null; e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' style='background:linear-gradient(135deg, %234f46e5 0%, %23ec4899 100%)'><text x='50%' y='50%' fill='white' font-size='24' font-family='sans-serif' text-anchor='middle' dy='.3em'>Eventi App 🎟️</text></svg>"; }}
-          />
-          <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {event.maxCapacity > 0 && (
-              <span className="badge-pill" style={{ backgroundColor: event.goingUsers?.length >= event.maxCapacity ? '#ef4444' : 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 'bold' }}>
-                {event.goingUsers?.length >= event.maxCapacity ? '🚫 SOLD OUT' : `🎟️ ${event.maxCapacity - event.goingUsers.length} posti`}
-              </span>
-            )}
-            <span className="badge-pill badge-category">{getCategoryLabel(event.category)}</span>
-            <span className="badge-pill" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white' }}>
-              {event.cost === 'Gratuito' && language === 'en' ? 'Free' : event.cost}
-            </span>
+      {/* Poster Banner Header */}
+      <div style={{ position: 'relative', height: '160px', width: '100%', background: 'var(--gradient-card)', overflow: 'hidden' }}>
+        <img 
+          src={event.poster || fallbackPoster} 
+          alt={event.title} 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+          onError={(e) => { e.target.onerror = null; e.target.src = fallbackPoster; }}
+        />
+
+        {/* Featured Badge */}
+        {isOrganizerPremium && (
+          <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 5, background: 'var(--gradient-premium)', color: 'white', fontSize: '9px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+            ✨ {language === 'en' ? "FEATURED" : "IN EVIDENZA"}
           </div>
+        )}
+
+        {/* Badges Top Right */}
+        <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', zIndex: 5 }}>
+          {event.maxCapacity > 0 && (
+            <span className="badge-pill" style={{ backgroundColor: event.goingUsers?.length >= event.maxCapacity ? '#ef4444' : 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 'bold' }}>
+              {event.goingUsers?.length >= event.maxCapacity ? '🚫 SOLD OUT' : `🎟️ ${event.maxCapacity - event.goingUsers.length} posti`}
+            </span>
+          )}
+          <span className="badge-pill badge-category">{getCategoryLabel(event.category)}</span>
+          <span className="badge-pill" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white' }}>
+            {event.cost === 'Gratuito' && language === 'en' ? 'Free' : event.cost}
+          </span>
         </div>
-      )}
+      </div>
 
       <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

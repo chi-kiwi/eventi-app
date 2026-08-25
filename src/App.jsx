@@ -321,8 +321,8 @@ export default function App() {
         if (!isOwner && !isAdmin && !isInvited) return false;
       }
 
-      // 2. Active Date Check (future/today or owned)
-      const isActive = !e.date || e.date >= todayStr || isOwner || isAdmin;
+      // 2. Active Date Check (future or today only)
+      const isActive = !e.date || e.date >= todayStr;
       if (!isActive) return false;
 
       // 3. Search Query
@@ -600,27 +600,15 @@ export default function App() {
                         </div>
                       )}
                       <div className="events-grid">
-                        {sortedEvents.map(evt => {
-                          const usersList = db.getUsers();
-                          const org = usersList.find(u => u.id === evt.organizerId);
-                          const isFeatured = org?.premium;
-                          
-                          return (
-                            <div key={evt.id} style={{ position: 'relative' }}>
-                              {isFeatured && (
-                                <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 5, background: 'var(--gradient-premium)', color: 'white', fontSize: '9px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '3px', boxShadow: 'var(--shadow-sm)' }}>
-                                  <Sparkles size={10} /> {language === 'en' ? "FEATURED" : "IN EVIDENZA"}
-                                </div>
-                              )}
-                              <EventCard 
-                                event={evt} 
-                                user={currentUser} 
-                                onSelect={handleSelectEvent} 
-                                onToggleParticipation={handleToggleParticipation}
-                              />
-                            </div>
-                          );
-                        })}
+                        {sortedEvents.map(evt => (
+                          <EventCard 
+                            key={evt.id}
+                            event={evt} 
+                            user={currentUser} 
+                            onSelect={handleSelectEvent} 
+                            onToggleParticipation={handleToggleParticipation}
+                          />
+                        ))}
                       </div>
 
                       {sortedEvents.length === 0 && (
