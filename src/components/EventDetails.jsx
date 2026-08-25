@@ -570,14 +570,36 @@ END:VCALENDAR`;
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: 'rgba(244, 63, 94, 0.15)', padding: '8px', borderRadius: '8px', color: 'var(--accent-pink)' }}>
-              <MapPin size={20} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '220px' }}>
+              <div style={{ background: 'rgba(244, 63, 94, 0.15)', padding: '8px', borderRadius: '8px', color: 'var(--accent-pink)', flexShrink: 0 }}>
+                <MapPin size={20} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{language === 'en' ? "Location" : "Luogo & Indirizzo"}</p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{event.location}</p>
+                {event.citta && (
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    📍 {event.citta} ({event.provincia || 'IT'}) • {event.regione || 'Italia'}
+                  </p>
+                )}
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{language === 'en' ? "Location" : "Luogo"}</p>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{event.location}</p>
-            </div>
+            <a
+              href={
+                event.gps && event.gps.lat && event.gps.lng && event.gps.lat !== 45.4642
+                  ? (typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent)
+                      ? `https://maps.apple.com/?q=${event.gps.lat},${event.gps.lng}`
+                      : `https://www.google.com/maps/search/?api=1&query=${event.gps.lat},${event.gps.lng}`)
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location || event.title)}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary btn-small"
+              style={{ padding: '8px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--gradient-primary)', color: 'white', border: 'none' }}
+            >
+              🗺️ {language === 'en' ? "Open Maps" : "Apri Maps"}
+            </a>
           </div>
 
           {/* Enhanced Weather Widget */}

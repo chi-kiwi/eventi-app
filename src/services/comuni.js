@@ -94,3 +94,46 @@ export function searchItalianComuni(query) {
 
   return localMatches;
 }
+
+/**
+ * Risolve dettagli completi di una località (Città, Provincia, Regione, Coordinate GPS)
+ */
+export function resolveLocationDetails(addressInput, defaultRegion = "Piemonte") {
+  if (!addressInput || !addressInput.trim()) {
+    return {
+      citta: "Comignago",
+      provincia: "NO",
+      regione: "Piemonte",
+      lat: 45.7188,
+      lng: 8.5639
+    };
+  }
+
+  const clean = addressInput.trim().toLowerCase();
+
+  // Try matching against local DB
+  const match = COMUNI_ITALIA.find(c => {
+    const nameLower = c.name.toLowerCase();
+    const provLower = c.prov.toLowerCase();
+    return clean.includes(nameLower) || clean.includes(`(${provLower})`) || clean.includes(` ${provLower} `);
+  });
+
+  if (match) {
+    return {
+      citta: match.name,
+      provincia: match.prov,
+      regione: match.region,
+      lat: match.lat,
+      lng: match.lng
+    };
+  }
+
+  // Fallback to Comignago/Novara/Piemonte if no city match found but address exists
+  return {
+    citta: addressInput.split(',')[0].replace(/via|piazza|corso|viale|vicolo/gi, '').trim() || "Novara",
+    provincia: "NO",
+    regione: defaultRegion || "Piemonte",
+    lat: 45.7188,
+    lng: 8.5639
+  };
+}

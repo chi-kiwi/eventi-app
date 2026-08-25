@@ -308,14 +308,26 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     setFormWarning('');
     setFormSuccess('');
 
-    if (!newTitle || !newDesc || !newDate || !newTime || !newLocation) {
-      setFormWarning("Per favore, compila tutti i campi fondamentali.");
+    if (!newTitle || !newTitle.trim() || !newDesc || !newDesc.trim()) {
+      setFormWarning("Per favore, inserisci un titolo ed una descrizione per l'evento.");
       return;
     }
 
-    // Auto geocode location to get exact lat/lng
-    let currentLat = newLat;
-    let currentLng = newLng;
+    if (!newLocation || !newLocation.trim()) {
+      setFormWarning("Indirizzo o località non valida. Seleziona un Comune o inserisci un indirizzo valido.");
+      return;
+    }
+
+    // Default time if empty
+    const effectiveTime = newTime && newTime.trim() ? newTime : "20:00";
+    const effectiveDate = newDate && newDate.trim() ? newDate : todayStr;
+
+    // Resolve location details (city, province, region, GPS)
+    const resolvedLoc = resolveLocationDetails(newLocation, user?.regione);
+    let currentLat = newLat !== '45.4642' ? newLat : resolvedLoc.lat.toString();
+    let currentLng = newLng !== '9.1900' ? newLng : resolvedLoc.lng.toString();
+
+    // Auto geocode location to get exact lat/lng if possible
     const geoRes = await handleGeocode(newLocation);
     if (geoRes) {
       currentLat = geoRes.lat;
@@ -323,11 +335,14 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     }
 
     const eventData = {
-      title: newTitle,
-      desc: newDesc,
-      date: newDate,
-      time: newTime,
-      location: newLocation,
+      title: newTitle.trim(),
+      desc: newDesc.trim(),
+      date: effectiveDate,
+      time: effectiveTime,
+      location: newLocation.trim(),
+      citta: resolvedLoc.citta,
+      provincia: resolvedLoc.provincia,
+      regione: resolvedLoc.regione,
       gps: { lat: parseFloat(currentLat), lng: parseFloat(currentLng) },
       category: newCategory,
       cost: newCost,
@@ -337,39 +352,19 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       animali: newAnimali,
       parcheggio: newParcheggio,
       poster: newPoster,
+      status: newStatus, // 'pubblicato' | 'bozza'
+      visibilita: newVisibilita, // 'pubblico' | 'privato'
       gallery: []
     };
 
-    // 1. Proximity alert: check if there's already any event within 30 km on the same day
-    const sameDayEvents = events.filter(evt => evt.date === newDate);
-    const nearbyConflict = sameDayEvents.find(evt => {
-      const dist = getDistance(parseFloat(newLat), parseFloat(newLng), evt.gps.lat, evt.gps.lng);
-      return dist <= 30;
-    });
-
-    if (nearbyConflict) {
-      const dist = getDistance(parseFloat(newLat), parseFloat(newLng), nearbyConflict.gps.lat, nearbyConflict.gps.lng).toFixed(1);
-      alert(`Attenzione: c'è già un altro evento programmato per questa data entro 30 km di distanza!\n\nEvento: "${nearbyConflict.title}" a ${nearbyConflict.location} (${dist} km di distanza)`);
-    }
-
-    // 2. Original proximity check collision (20km warning popup)
-    const collision = db.checkCollision(eventData);
-    if (collision) {
-      const radius = newCategory === 'Feste nei locali' ? 5 : 20;
-      const proceed = window.confirm(
-        `ATTENZIONE: RILEVATO CONFLITTO DI PROSSIMITÀ!\n\n` +
-        `Esiste già un evento nello stesso giorno ed entro un raggio di ${radius} km:\n` +
-        `"${collision.title}" (${collision.location})\n\n` +
-        `Vuoi procedere comunque con la creazione del tuo evento?`
-      );
-      if (!proceed) {
-        return; // Cancel event creation
-      }
-    }
-
     const res = db.createEvent(eventData, user.id);
     if (res.success) {
-      setFormSuccess("🎉 Evento creato e pubblicato con successo nella community!");
+      if (newStatus === 'pubblicato') {
+        setFormSuccess("🎉 Evento creato e pubblicato correttamente nella community!");
+      } else {
+        setFormSuccess("📑 Evento salvato correttamente come bozza (visibile solo nel tuo cruscotto).");
+      }
+
       if (res.warning) {
         setFormWarning(res.warning);
       }

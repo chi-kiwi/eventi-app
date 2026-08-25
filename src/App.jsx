@@ -304,16 +304,37 @@ export default function App() {
   const getFilteredEvents = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     return events.filter(e => {
-      // Show events with future/today date OR any event created by current user
-      const isActive = !e.date || e.date >= todayStr || (currentUser && (e.organizerId === currentUser.id || currentUser.role === 'admin'));
+      // 1. Status & Privacy Visibility Check:
+      const isOwner = currentUser && e.organizerId === currentUser.id;
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      const isInvited = currentUser && (
+        (e.invitedUsers && (e.invitedUsers.includes(currentUser.id) || e.invitedUsers.includes(currentUser.email)))
+      );
+
+      // Draft or Cancelled events are ONLY visible to owner/admin
+      if (e.status === 'bozza' || e.status === 'annullato') {
+        if (!isOwner && !isAdmin) return false;
+      }
+
+      // Private/Invited-only events are ONLY visible to owner, admin, or invited participants
+      if (e.visibilita === 'privato' || e.visibilita === 'solo_invitati') {
+        if (!isOwner && !isAdmin && !isInvited) return false;
+      }
+
+      // 2. Active Date Check (future/today or owned)
+      const isActive = !e.date || e.date >= todayStr || isOwner || isAdmin;
       if (!isActive) return false;
 
+      // 3. Search Query
       const matchesSearch = !searchQuery.trim() || 
                             e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             e.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            e.location.toLowerCase().includes(searchQuery.toLowerCase());
+                            e.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (e.citta && e.citta.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                            (e.provincia && e.provincia.toLowerCase().includes(searchQuery.toLowerCase()));
       if (!matchesSearch) return false;
       
+      // 4. Category Filter
       let matchesCategory = false;
       if (selectedCategory === '⚡ Stasera cosa faccio?') {
         matchesCategory = e.date === todayStr;
@@ -330,8 +351,9 @@ export default function App() {
       }
       if (!matchesCategory) return false;
       
+      // 5. Region Filter
       const matchesRegion = selectedRegion === 'Tutti' || 
-                            (currentUser && e.organizerId === currentUser.id) ||
+                            isOwner ||
                             (e.regione && e.regione.toLowerCase().includes(selectedRegion.toLowerCase())) ||
                             e.location.toLowerCase().includes(selectedRegion.toLowerCase());
 
