@@ -21,43 +21,6 @@ const DEFAULT_USERS = [
     collabId: "COL-100001",
     badges: ["Fondatore", "Super Organizzatore"],
     avatar: "/logo.jpg"
-  },
-  {
-    id: "usr_1",
-    name: "Marco",
-    cognome: "Rossi",
-    email: "user@events.com",
-    phone: "3479876543",
-    comune: "Milano",
-    regione: "Lombardia",
-    password: "password123",
-    role: "utente",
-    interests: ["Feste nei locali", "Musica"],
-    premium: false,
-    dateOfBirth: "1995-11-20",
-    points: 150,
-    collabId: "COL-100002",
-    badges: ["Esploratore"],
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
-  },
-  {
-    id: "col_1",
-    name: "Giulia",
-    cognome: "Verdi",
-    email: "collaborator@events.com",
-    phone: "3491112222",
-    comune: "Saronno",
-    regione: "Lombardia",
-    password: "password123",
-    role: "collaboratore",
-    interests: ["Escursioni", "Bambini/Famiglie"],
-    premium: false,
-    dateOfBirth: "1997-02-10",
-    points: 50,
-    collabId: "COL-100003",
-    invitedBy: "org_1",
-    badges: [],
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150"
   }
 ];
 
@@ -139,6 +102,26 @@ class LocalDB {
   }
 
   init() {
+    // One-time clean migration to purge legacy demo accounts & mock events
+    try {
+      if (!localStorage.getItem("evt_clean_production_v1")) {
+        const storedUsers = JSON.parse(localStorage.getItem("evt_users") || "[]");
+        const cleanUsers = storedUsers.filter(u => u.id === "org_1" || (!u.id.startsWith("usr_1") && !u.id.startsWith("col_1") && u.email !== "user@events.com" && u.email !== "collaborator@events.com"));
+        if (!cleanUsers.some(u => u.id === "org_1")) {
+          cleanUsers.unshift(...DEFAULT_USERS);
+        }
+        localStorage.setItem("evt_users", JSON.stringify(cleanUsers));
+
+        const storedEvts = JSON.parse(localStorage.getItem("evt_events") || "[]");
+        const cleanEvts = storedEvts.filter(e => !e.isDemo && !e.title?.toLowerCase().includes("sagra della zucca") && !e.title?.toLowerCase().includes("salamella") && e.organizerId === "org_1");
+        localStorage.setItem("evt_events", JSON.stringify(cleanEvts));
+
+        localStorage.removeItem("evt_messages");
+        localStorage.removeItem("evt_follows");
+        localStorage.setItem("evt_clean_production_v1", "true");
+      }
+    } catch (e) {}
+
     try {
       if (!localStorage.getItem("evt_users")) {
         localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
@@ -146,27 +129,9 @@ class LocalDB {
         let storedUsers = localStorage.getItem("evt_users");
         if (storedUsers) {
           let parsed = JSON.parse(storedUsers);
-          if (!Array.isArray(parsed)) {
+          if (!Array.isArray(parsed) || parsed.length === 0) {
             localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
             parsed = DEFAULT_USERS;
-          }
-          let updated = false;
-          parsed.forEach(u => {
-            if (!u.avatar) {
-              if (u.id === "usr_1") u.avatar = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150";
-              else if (u.id === "org_1") u.avatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150";
-              else if (u.id === "col_1") u.avatar = "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150";
-              else u.avatar = "";
-              updated = true;
-            }
-            if (!u.collabId) {
-              const numHash = Math.abs(u.id.split('').reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) | 0, 0)) % 899999 + 100000;
-              u.collabId = `COL-${numHash}`;
-              updated = true;
-            }
-          });
-          if (updated) {
-            localStorage.setItem("evt_users", JSON.stringify(parsed));
           }
         }
       }

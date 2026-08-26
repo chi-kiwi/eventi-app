@@ -338,7 +338,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="user@events.com o 3331234567" 
+                  placeholder="chiara@eventiapp.com o 3331234567" 
                   value={loginCred}
                   onChange={(e) => setLoginCred(e.target.value)}
                   style={{ paddingLeft: '42px' }}

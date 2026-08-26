@@ -136,7 +136,7 @@ export default function LandingPage({ events = [], onOpenLogin, onOpenRegister, 
       </section>
 
       {/* Featured Preview Events */}
-      {previewEvents.length > 0 && (
+      {previewEvents.length > 0 ? (
         <section style={{ padding: '40px 20px 60px', maxWidth: '1100px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
@@ -162,6 +162,21 @@ export default function LandingPage({ events = [], onOpenLogin, onOpenRegister, 
                 onToggleParticipation={onOpenLogin}
               />
             ))}
+          </div>
+        </section>
+      ) : (
+        <section style={{ padding: '40px 20px 60px', maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
+          <div className="glass-panel" style={{ padding: '40px 20px', borderRadius: '20px' }}>
+            <span style={{ fontSize: '40px', display: 'block', marginBottom: '12px' }}>🗓️</span>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>
+              Nessun evento in programma al momento
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '450px', margin: '0 auto 16px' }}>
+              Gli organizzatori stanno preparando i prossimi eventi locali. Torna a trovarci a breve o pubblica il tuo primo evento!
+            </p>
+            <button className="btn btn-primary btn-small" onClick={onOpenRegister}>
+              ✨ Pubblica un Evento
+            </button>
           </div>
         </section>
       )}
