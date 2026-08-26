@@ -11,13 +11,10 @@ export default function LandingPage({ events = [], onOpenLogin, onOpenRegister, 
       
       {/* Top Navbar */}
       <header className="app-header" style={{ padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="app-title" style={{ cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <img 
-            src="/logo.jpg" 
-            alt="EventiApp Logo" 
-            style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-glass)' }} 
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
+        <div className="app-title" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '18px' }}>
+            📅
+          </div>
           <span style={{ fontSize: '20px', fontWeight: '800', background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             EventiApp
           </span>

@@ -296,11 +296,9 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
     <div className="view-content animate-slide-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '90vh', position: 'relative', width: '100%', maxWidth: '440px', margin: '0 auto', padding: '40px 20px' }}>
       <ThemeLangBar />
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <img 
-          src="/logo.jpg" 
-          alt="CF Logo" 
-          style={{ width: '64px', height: '64px', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--border-glass)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', marginBottom: '12px' }}
-        />
+        <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'var(--gradient-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '32px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', marginBottom: '12px' }}>
+          📅
+        </div>
         <h1 style={{ fontSize: '32px', fontWeight: 800, background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'block' }}>
           Eventi App
         </h1>
@@ -541,12 +539,6 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       <div style={{ textAlign: 'center', marginTop: '20px', opacity: 0.85 }}>
         <span style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}>
           Realizzato con <span style={{ color: '#ef4444', fontSize: '13px' }}>❤️</span> da <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Chiara Francescon</strong>
-          <img 
-            src="/logo.jpg" 
-            alt="CF Logo" 
-            style={{ width: '16px', height: '16px', borderRadius: '3px', objectFit: 'cover', display: 'inline-block', verticalAlign: 'middle', border: '1px solid var(--border-glass)' }}
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
         </span>
       </div>
 

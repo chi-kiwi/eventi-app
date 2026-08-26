@@ -104,21 +104,28 @@ class LocalDB {
   init() {
     // One-time clean migration to purge legacy demo accounts & mock events
     try {
-      if (!localStorage.getItem("evt_clean_production_v1")) {
+      if (!localStorage.getItem("evt_clean_production_v2")) {
         const storedUsers = JSON.parse(localStorage.getItem("evt_users") || "[]");
-        const cleanUsers = storedUsers.filter(u => u.id === "org_1" || (!u.id.startsWith("usr_1") && !u.id.startsWith("col_1") && u.email !== "user@events.com" && u.email !== "collaborator@events.com"));
+        const cleanUsers = storedUsers.filter(u => u.id === "org_1" || (!u.id.startsWith("usr_1") && !u.id.startsWith("col_1") && u.email !== "user@events.com" && u.email !== "collaborator@events.com" && !u.name?.includes("Bianchi")));
         if (!cleanUsers.some(u => u.id === "org_1")) {
           cleanUsers.unshift(...DEFAULT_USERS);
         }
         localStorage.setItem("evt_users", JSON.stringify(cleanUsers));
 
         const storedEvts = JSON.parse(localStorage.getItem("evt_events") || "[]");
-        const cleanEvts = storedEvts.filter(e => !e.isDemo && !e.title?.toLowerCase().includes("sagra della zucca") && !e.title?.toLowerCase().includes("salamella") && e.organizerId === "org_1");
+        const cleanEvts = storedEvts.filter(e => {
+          if (!e || e.isDemo) return false;
+          const t = (e.title || "").toLowerCase();
+          const d = (e.desc || "").toLowerCase();
+          if (t.includes("esempio") || t.includes("zucca") || t.includes("salamella") || t === "ciao" || d === "ciao" || t.includes("test")) return false;
+          return true;
+        });
         localStorage.setItem("evt_events", JSON.stringify(cleanEvts));
 
+        localStorage.removeItem("evt_community_messages");
         localStorage.removeItem("evt_messages");
         localStorage.removeItem("evt_follows");
-        localStorage.setItem("evt_clean_production_v1", "true");
+        localStorage.setItem("evt_clean_production_v2", "true");
       }
     } catch (e) {}
 
@@ -193,27 +200,7 @@ class LocalDB {
 
     try {
       if (!localStorage.getItem("evt_community_messages")) {
-        const defaultCommunityMessages = [
-          {
-            id: "cm_init_1",
-            eventId: "evt_1",
-            userId: "usr_1",
-            userName: "Chiara Rossi",
-            userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
-            text: "Ciao a tutti! Qualcuno sa se ci sono opzioni senza glutine tra i food truck?",
-            timestamp: new Date(Date.now() - 7200000).toISOString()
-          },
-          {
-            id: "cm_init_2",
-            eventId: "evt_1",
-            userId: "org_1",
-            userName: "Marco Bianchi",
-            userAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
-            text: "Sì Chiara! Ci saranno ben 4 truck dedicati interamente al gluten-free, segnalati all'ingresso. Ti aspettiamo!",
-            timestamp: new Date(Date.now() - 3600000).toISOString()
-          }
-        ];
-        localStorage.setItem("evt_community_messages", JSON.stringify(defaultCommunityMessages));
+        localStorage.setItem("evt_community_messages", JSON.stringify([]));
       }
     } catch (e) {
       console.error("Error initializing community messages:", e);
@@ -245,7 +232,14 @@ class LocalDB {
       if (!Array.isArray(events)) {
         return [];
       }
-      return events;
+      // Strict production filtering rule: exclude demo events and legacy test titles
+      return events.filter(e => {
+        if (!e || e.isDemo) return false;
+        const t = (e.title || "").toLowerCase();
+        const d = (e.desc || "").toLowerCase();
+        if (t.includes("esempio") || t.includes("zucca") || t.includes("salamella") || t === "ciao" || d === "ciao" || t === "test") return false;
+        return true;
+      });
     } catch (e) {
       return [];
     }

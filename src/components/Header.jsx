@@ -13,12 +13,9 @@ export default function Header({ user, onLogout, onTabChange, notifications = []
   return (
     <header className="app-header" style={{ position: 'relative' }}>
       <div className="app-title" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => onTabChange('explore')}>
-        <img 
-          src="/logo.jpg" 
-          alt="CF Logo" 
-          style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border-glass)', boxShadow: 'var(--shadow-sm)' }}
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
+        <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '15px', boxShadow: 'var(--shadow-sm)' }}>
+          📅
+        </div>
         <span style={{ 
           fontSize: '18px', 
           fontWeight: 800, 

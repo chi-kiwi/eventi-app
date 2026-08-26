@@ -1,0 +1,18 @@
+{
+  "release": "APP EVENTI - VERSIONE COMPLETA STABILE",
+  "version": "1.0.0-STABLE",
+  "timestamp": "2026-08-26T18:18:00+02:00",
+  "productionStatus": "CLEAN_PRODUCTION_READY",
+  "environment": "PRODUCTION",
+  "buildStatus": "SUCCESS (0 ERRORS)",
+  "consoleErrors": 0,
+  "testResults": {
+    "productionCleanResetTest": "7/7 PASSED (100%)",
+    "privacyGdprParticipantsTest": "7/7 PASSED (100%)",
+    "newFeaturesAndNoRegressionTest": "12/12 PASSED (100%)",
+    "smokeTestOnlineDefinitivo": "17/17 PASSED (100%)",
+    "manualPageVerification": "13/13 PAGES OK (100%)"
+  },
+  "authorizedAdminRole": "organizzatore",
+  "backupRef": "backup_stable_release_v1"
+}
