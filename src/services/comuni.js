@@ -60,7 +60,26 @@ export const COMUNI_ITALIA = [
   { name: "Reggio Emilia", prov: "RE", region: "Emilia-Romagna", lat: 44.6983, lng: 10.6312 },
   { name: "Ferrara", prov: "FE", region: "Emilia-Romagna", lat: 44.8381, lng: 11.6198 },
   { name: "Ravenna", prov: "RA", region: "Emilia-Romagna", lat: 44.4184, lng: 12.2035 },
-  { name: "Rimini", prov: "RN", region: "Emilia-Romagna", lat: 44.0678, lng: 12.5695 }
+  { name: "Pombia", prov: "NO", region: "Piemonte", lat: 45.6567, lng: 8.6322 },
+  { name: "Varallo Pombia", prov: "NO", region: "Piemonte", lat: 45.6667, lng: 8.6333 },
+  { name: "Borgo Ticino", prov: "NO", region: "Piemonte", lat: 45.6833, lng: 8.6000 },
+  { name: "Castelletto sopra Ticino", prov: "NO", region: "Piemonte", lat: 45.7167, lng: 8.6333 },
+  { name: "Divignano", prov: "NO", region: "Piemonte", lat: 45.6667, lng: 8.6000 },
+  { name: "Agrate Conturbia", prov: "NO", region: "Piemonte", lat: 45.6833, lng: 8.5667 },
+  { name: "Gattico-Veruno", prov: "NO", region: "Piemonte", lat: 45.7000, lng: 8.5167 },
+  { name: "Sesto Calende", prov: "VA", region: "Lombardia", lat: 45.7275, lng: 8.6322 },
+  { name: "Somma Lombardo", prov: "VA", region: "Lombardia", lat: 45.6833, lng: 8.7000 },
+  { name: "Vergiate", prov: "VA", region: "Lombardia", lat: 45.7167, lng: 8.7000 },
+  { name: "Angera", prov: "VA", region: "Lombardia", lat: 45.7667, lng: 8.5833 },
+  { name: "Biella", prov: "BI", region: "Piemonte", lat: 45.5667, lng: 8.0500 },
+  { name: "Vercelli", prov: "VC", region: "Piemonte", lat: 45.3250, lng: 8.4200 },
+  { name: "Alessandria", prov: "AL", region: "Piemonte", lat: 44.9167, lng: 8.6167 },
+  { name: "Asti", prov: "AT", region: "Piemonte", lat: 44.9000, lng: 8.2000 },
+  { name: "Cuneo", prov: "CN", region: "Piemonte", lat: 44.3833, lng: 7.5500 },
+  { name: "Domodossola", prov: "VB", region: "Piemonte", lat: 46.1167, lng: 8.2833 },
+  { name: "Stresa", prov: "VB", region: "Piemonte", lat: 45.8833, lng: 8.5333 },
+  { name: "Baveno", prov: "VB", region: "Piemonte", lat: 45.9000, lng: 8.5000 },
+  { name: "Casale Monferrato", prov: "AL", region: "Piemonte", lat: 45.1333, lng: 8.4500 }
 ];
 
 /**
@@ -71,16 +90,13 @@ export function searchItalianComuni(query) {
   const cleanQ = query.trim().toLowerCase();
   const tokens = cleanQ.split(/\s+/).filter(t => t.length >= 2);
 
-  // 1. Cerca prima corrispondenze nel database locale italiano
   const localMatches = COMUNI_ITALIA.filter(c => {
     const townLower = c.name.toLowerCase();
     const provLower = c.prov.toLowerCase();
     
-    // Direct match
     if (townLower.includes(cleanQ) || cleanQ.includes(townLower)) return true;
     if (provLower === cleanQ) return true;
 
-    // Token match: check if any token matches the town name or vice versa
     return tokens.some(token => townLower.includes(token) || (token.length >= 4 && townLower.startsWith(token)));
   }).map(c => ({
     label: `${c.name} (${c.prov})`,
@@ -110,13 +126,22 @@ export function resolveLocationDetails(addressInput, defaultRegion = "Piemonte")
   }
 
   const clean = addressInput.trim().toLowerCase();
+  const tokens = clean.split(/[\s,.-]+/).filter(t => t.length >= 3 && !['via', 'piazza', 'viale', 'corso', 'vicolo', 'della', 'dello', 'della', 'san', 'sant'].includes(t));
 
-  // Try matching against local DB
-  const match = COMUNI_ITALIA.find(c => {
+  // 1. Try exact or substring match against COMUNI_ITALIA
+  let match = COMUNI_ITALIA.find(c => {
     const nameLower = c.name.toLowerCase();
     const provLower = c.prov.toLowerCase();
     return clean.includes(nameLower) || clean.includes(`(${provLower})`) || clean.includes(` ${provLower} `);
   });
+
+  // 2. Try token matching (e.g. "pombia" in "via don minzoni 77 pombia")
+  if (!match && tokens.length > 0) {
+    match = COMUNI_ITALIA.find(c => {
+      const nameLower = c.name.toLowerCase();
+      return tokens.some(tok => nameLower === tok || nameLower.includes(tok) || tok.includes(nameLower));
+    });
+  }
 
   if (match) {
     return {
@@ -128,9 +153,9 @@ export function resolveLocationDetails(addressInput, defaultRegion = "Piemonte")
     };
   }
 
-  // Fallback to Comignago/Novara/Piemonte if no city match found but address exists
+  // Fallback to Novara/Piemonte if no city match found
   return {
-    citta: addressInput.split(',')[0].replace(/via|piazza|corso|viale|vicolo/gi, '').trim() || "Novara",
+    citta: tokens[tokens.length - 1] ? tokens[tokens.length - 1].charAt(0).toUpperCase() + tokens[tokens.length - 1].slice(1) : "Novara",
     provincia: "NO",
     regione: defaultRegion || "Piemonte",
     lat: 45.7188,

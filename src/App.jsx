@@ -110,7 +110,7 @@ export default function App() {
   const [selectedRegion, setSelectedRegion] = useState('Tutti');
 
   const categories = [
-    "Tutti", "⚡ Stasera cosa faccio?", "Salvati 📌", "Feste di paese", "Feste nei locali", "Musica", "Motori", "Escursioni", "Sport", 
+    "Tutti", "⚡ Stasera cosa faccio?", "Questo Weekend 🥂", "Salvati 📌", "Feste di paese", "Feste nei locali", "Musica", "Motori", "Escursioni", "Sport", 
     "Mercatini", "Street food", "Bambini/Famiglie"
   ];
 
@@ -337,7 +337,25 @@ export default function App() {
       // 4. Category Filter
       let matchesCategory = false;
       if (selectedCategory === '⚡ Stasera cosa faccio?') {
-        matchesCategory = e.date === todayStr;
+      } else if (selectedCategory === 'Questo Weekend 🥂' || selectedCategory === 'Questo Weekend') {
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+        let sat = new Date(now);
+        let sun = new Date(now);
+        if (dayOfWeek === 0) {
+          sat.setDate(now.getDate() - 1);
+          sun = now;
+        } else if (dayOfWeek === 6) {
+          sat = now;
+          sun.setDate(now.getDate() + 1);
+        } else {
+          const daysUntilSat = 6 - dayOfWeek;
+          sat.setDate(now.getDate() + daysUntilSat);
+          sun.setDate(now.getDate() + daysUntilSat + 1);
+        }
+        const satStr = sat.toISOString().split('T')[0];
+        const sunStr = sun.toISOString().split('T')[0];
+        matchesCategory = (e.date === satStr || e.date === sunStr);
       } else if (selectedCategory === 'Tutti') {
         matchesCategory = true;
       } else if (selectedCategory === 'Salvati 📌') {

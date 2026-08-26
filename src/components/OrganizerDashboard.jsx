@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Heart, Check, Users, MapPin, Calendar, Award, UserPlus, Shield, Sparkles, MessageSquare, Plus, AlertCircle, Trash2 } from 'lucide-react';
+import { Eye, Heart, Check, Users, MapPin, Calendar, Award, UserPlus, Shield, Sparkles, MessageSquare, Plus, AlertCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { db, getDistance } from '../services/db';
 import { searchItalianComuni } from '../services/comuni';
 
 export default function OrganizerDashboard({ user, events, onRefreshEvents, onSelectEvent }) {
   const [dashTab, setDashTab] = useState('stats'); // stats / create / collaborators
   
-  // Selection of event to view statistics
+  // Selection of event to view statistics (most recent first)
   const myEvents = events.filter(e => e.organizerId === user.id || (user.role === 'collaboratore' && e.organizerId === user.invitedBy));
-  const [selectedEventId, setSelectedEventId] = useState(myEvents[0]?.id || '');
-  const activeEvent = myEvents.find(e => e.id === selectedEventId);
+  const sortedMyEvents = [...myEvents].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const [selectedEventId, setSelectedEventId] = useState(sortedMyEvents[0]?.id || '');
+  const activeEvent = sortedMyEvents.find(e => e.id === selectedEventId) || sortedMyEvents[0];
 
   // New Event Form State
   const [newTitle, setNewTitle] = useState('');
@@ -136,11 +137,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
   const users = db.getUsers();
   const myCollaborators = users.filter(u => u.role === 'collaboratore' && u.invitedBy === user.id);
 
-  const [geoSuggestions, setGeoSuggestions] = useState([]);
-  const [isGeoLoading, setIsGeoLoading] = useState(false);
-  const [geoDetails, setGeoDetails] = useState('');
-
-  // Fetch address suggestions combining exact street addresses & Italian towns index
+  // Fetch national address suggestions via OpenStreetMap Nominatim
   const handleFetchAddressSuggestions = async (query) => {
     if (!query || query.trim().length < 2) {
       setGeoSuggestions([]);
@@ -148,79 +145,80 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     }
 
     const cleanQuery = query.trim();
-    const localMatches = searchItalianComuni(cleanQuery);
-
-    // Always create a custom item for whatever the user is typing so street addresses never fail
-    const customUserOption = {
-      label: cleanQuery,
-      fullTitle: `📍 Conferma indirizzo inserito: "${cleanQuery}"`,
-      lat: newLat || '45.4642',
-      lng: newLng || '9.1900',
-      isCustom: true
-    };
+    setIsGeoLoading(true);
 
     try {
-      setIsGeoLoading(true);
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=it&addressdetails=1&q=${encodeURIComponent(cleanQuery + ', Italia')}&limit=5`, {
-        headers: { 'User-Agent': 'EventiApp/1.0 (admin@eventiapp.com)' }
-      });
-      const data = await response.json();
-      const remoteMatches = [];
+      // 1. Search National Geocoder API
+      const remoteMatches = await searchNationalAddress(cleanQuery);
+      
+      // 2. Search Local Comuni Index
+      const localMatches = searchItalianComuni(cleanQuery);
 
-      if (data && Array.isArray(data) && data.length > 0) {
-        data.forEach(item => {
-          const addr = item.address || {};
-          const street = (addr.road || addr.pedestrian || addr.square || addr.house_number) 
-            ? `${addr.road || addr.pedestrian || addr.square || ''} ${addr.house_number || ''}`.trim() 
-            : '';
-          const town = addr.village || addr.town || addr.city || addr.municipality || item.display_name.split(',')[0];
-          const county = addr.county || addr.province || '';
-          const state = addr.state || '';
-          
-          let provinceCode = '';
-          if (addr['ISO3166-2-lvl6']) {
-            provinceCode = addr['ISO3166-2-lvl6'].replace('IT-', '').toUpperCase();
-          } else if (county) {
-            provinceCode = county.replace(/Provincia di /i, '').trim().substring(0, 2).toUpperCase();
-          }
-          
-          const label = street 
-            ? `${street}, ${town}${provinceCode ? ` (${provinceCode})` : ''}` 
-            : (provinceCode ? `${town} (${provinceCode})` : town);
-            
-          const fullSubtitle = [state, 'Italia'].filter(Boolean).join(', ');
+      // 3. Fallback item for user input
+      const resolvedLoc = resolveLocationDetails(cleanQuery, user?.regione);
+      const customUserOption = {
+        label: cleanQuery,
+        fullAddress: `📍 Indirizzo Inserito: "${cleanQuery}" (${resolvedLoc.citta} ${resolvedLoc.provincia})`,
+        citta: resolvedLoc.citta,
+        provincia: resolvedLoc.provincia,
+        regione: resolvedLoc.regione,
+        cap: '28040',
+        nazione: 'Italia',
+        lat: resolvedLoc.lat,
+        lng: resolvedLoc.lng,
+        isPrecise: false,
+        isCustom: true
+      };
 
-          remoteMatches.push({
-            label,
-            fullTitle: `${label}, ${fullSubtitle}`,
-            lat: parseFloat(item.lat).toFixed(4),
-            lng: parseFloat(item.lon).toFixed(4)
-          });
-        });
-      }
-
-      const combined = [customUserOption, ...remoteMatches, ...localMatches];
+      const combined = [...remoteMatches, ...localMatches, customUserOption];
       const seen = new Set();
       const uniqueSuggestions = combined.filter(item => {
-        if (seen.has(item.label)) return false;
-        seen.add(item.label);
+        if (!item || !item.label || seen.has(item.label.toLowerCase())) return false;
+        seen.add(item.label.toLowerCase());
         return true;
       });
 
       setGeoSuggestions(uniqueSuggestions.slice(0, 6));
     } catch (e) {
-      setGeoSuggestions([customUserOption, ...localMatches.slice(0, 5)]);
+      console.error("Geocoding fetch error:", e);
     } finally {
       setIsGeoLoading(false);
     }
   };
 
+  const [cityAmbiguityWarning, setCityAmbiguityWarning] = useState('');
+
   const handleSelectGeoSuggestion = (item) => {
-    setNewLocation(item.label);
+    setNewLocation(item.label || item.fullAddress);
     setNewLat(item.lat);
     setNewLng(item.lng);
-    setGeoDetails(`${item.fullTitle} • GPS: ${item.lat}, ${item.lng}`);
+    setSelectedGeo(item);
+    setIsGeocoded(true);
     setGeoSuggestions([]);
+
+    const precisionText = item.precisionLevel === 'house_number' ? '🎯 Numero Civico Esatto' :
+                         item.precisionLevel === 'street' ? '🛣️ Via / Strada' :
+                         item.precisionLevel === 'place' ? '🏢 Luogo Specifico' : '📍 Marker Personalizzato';
+
+    setGeoDetails(`📍 ${item.label} • Comune: ${item.citta} (${item.provincia}) • GPS: ${item.lat}, ${item.lng} • Precisione: ${precisionText}`);
+
+    // Check city ambiguity
+    const typedLower = newLocation.toLowerCase();
+    if (typedLower.length > 3 && item.citta && !typedLower.includes(item.citta.toLowerCase())) {
+      setCityAmbiguityWarning(`⚠️ Controlla il comune selezionato: il risultato trovato dal geocoder è ${item.citta} (${item.provincia}), Regione ${item.regione || 'Lombardia'}. Se desideri un altro punto, seleziona una voce diversa dalla tendina o posiziona lo spillo sulla mappa.`);
+    } else {
+      setCityAmbiguityWarning('');
+    }
+  };
+
+  const handleMapPinChange = ({ lat, lng }) => {
+    setNewLat(lat);
+    setNewLng(lng);
+    setIsGeocoded(true);
+    if (selectedGeo) {
+      setSelectedGeo(prev => prev ? { ...prev, lat, lng } : null);
+    }
+    setGeoDetails(`📍 Posizione Marker Personalizzata • GPS: ${lat}, ${lng}`);
   };
 
   // Auto GPS Location button handler
@@ -265,46 +263,12 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     );
   };
 
-  // Dynamic Geocoding fallback
-  const handleGeocode = async (address) => {
-    if (!address || address.trim().length < 2) return null;
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(address)}&limit=1`, {
-        headers: { 'User-Agent': 'EventiApp/1.0 (admin@eventiapp.com)' }
-      });
-      const data = await response.json();
-      if (data && Array.isArray(data) && data.length > 0) {
-        const item = data[0];
-        const addr = item.address || {};
-        const town = addr.village || addr.town || addr.city || addr.municipality || item.display_name.split(',')[0];
-        const county = addr.county || addr.province || '';
-        const state = addr.state || '';
-        
-        let provinceCode = '';
-        if (addr['ISO3166-2-lvl6']) {
-          provinceCode = addr['ISO3166-2-lvl6'].replace('IT-', '').toUpperCase();
-        } else if (county) {
-          provinceCode = county.replace(/Provincia di /i, '').trim().substring(0, 2).toUpperCase();
-        }
-
-        const formattedLabel = provinceCode ? `${town} (${provinceCode})` : town;
-        const latStr = parseFloat(item.lat).toFixed(4);
-        const lngStr = parseFloat(item.lon).toFixed(4);
-
-        setNewLat(latStr);
-        setNewLng(lngStr);
-        setGeoDetails(`${address} • GPS: ${latStr}, ${lngStr}`);
-        return { lat: latStr, lng: lngStr, label: address };
-      }
-    } catch (e) {
-      console.error("Geocoding failed:", e);
-    }
-    return null;
-  };
+  const [pendingNearbyEvents, setPendingNearbyEvents] = useState([]);
+  const [bypassNearbyWarning, setBypassNearbyWarning] = useState(false);
 
   // Handle Event Creation
-  const handleCreateEvent = async (e) => {
-    e.preventDefault();
+  const handleCreateEvent = async (e, forcePublish = false) => {
+    if (e) e.preventDefault();
     setFormWarning('');
     setFormSuccess('');
 
@@ -314,7 +278,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     }
 
     if (!newLocation || !newLocation.trim()) {
-      setFormWarning("Indirizzo o località non valida. Seleziona un Comune o inserisci un indirizzo valido.");
+      setFormWarning("Indirizzo o località non valida. Inserisci un indirizzo o seleziona una voce dalla lista.");
       return;
     }
 
@@ -322,16 +286,23 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
     const effectiveTime = newTime && newTime.trim() ? newTime : "20:00";
     const effectiveDate = newDate && newDate.trim() ? newDate : todayStr;
 
-    // Resolve location details (city, province, region, GPS)
+    // Resolve location details
     const resolvedLoc = resolveLocationDetails(newLocation, user?.regione);
-    let currentLat = newLat !== '45.4642' ? newLat : resolvedLoc.lat.toString();
-    let currentLng = newLng !== '9.1900' ? newLng : resolvedLoc.lng.toString();
+    let currentLat = parseFloat(newLat) || resolvedLoc.lat;
+    let currentLng = parseFloat(newLng) || resolvedLoc.lng;
 
-    // Auto geocode location to get exact lat/lng if possible
-    const geoRes = await handleGeocode(newLocation);
-    if (geoRes) {
-      currentLat = geoRes.lat;
-      currentLng = geoRes.lng;
+    // Proximity warning check for same date within 25 km
+    if (!forcePublish && !bypassNearbyWarning) {
+      const nearby = db.findNearbyEventsOnDate(effectiveDate, currentLat, currentLng, 25);
+      if (nearby.length > 0) {
+        setPendingNearbyEvents(nearby);
+        return; // stop execution until user responds to nearby modal
+      }
+    }
+
+    let finalPrecision = selectedGeo?.precisionLevel || 'street';
+    if (selectedGeo?.isCustom || !selectedGeo) {
+      finalPrecision = /via|corso|piazza|viale|vicolo/i.test(newLocation) ? 'street' : 'city';
     }
 
     const eventData = {
@@ -340,10 +311,14 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       date: effectiveDate,
       time: effectiveTime,
       location: newLocation.trim(),
-      citta: resolvedLoc.citta,
-      provincia: resolvedLoc.provincia,
-      regione: resolvedLoc.regione,
-      gps: { lat: parseFloat(currentLat), lng: parseFloat(currentLng) },
+      citta: selectedGeo?.citta || resolvedLoc.citta,
+      provincia: selectedGeo?.provincia || resolvedLoc.provincia,
+      regione: selectedGeo?.regione || resolvedLoc.regione,
+      cap: selectedGeo?.cap || '28040',
+      nazione: 'Italia',
+      gps: { lat: currentLat, lng: currentLng },
+      precisionLevel: finalPrecision,
+      placeId: selectedGeo?.placeId || '',
       category: newCategory,
       cost: newCost,
       maxCapacity: parseInt(newMaxCapacity) || 0,
@@ -362,7 +337,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       if (newStatus === 'pubblicato') {
         setFormSuccess("🎉 Evento creato e pubblicato correttamente nella community!");
       } else {
-        setFormSuccess("📑 Evento salvato correttamente come bozza (visibile solo nel tuo cruscotto).");
+        setFormSuccess("📑 Evento salvato come bozza (visibile solo nel tuo cruscotto).");
       }
 
       if (res.warning) {
@@ -919,11 +894,31 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
               </div>
             )}
 
-            <div style={{ marginTop: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>📍</span>
-              <span>
-                <strong>Posizione Mappa GPS:</strong> {geoDetails || `${newLocation || 'Milano'} (Lat: ${newLat}, Lng: ${newLng})`}
-              </span>
+            <div style={{ marginTop: '6px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', color: 'var(--accent-green)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📍</span>
+                <span>
+                  <strong>Posizione Mappa GPS Confermato:</strong> {geoDetails || `${newLocation || 'Pombia (NO)'} (Lat: ${newLat}, Lng: ${newLng})`}
+                </span>
+              </div>
+            </div>
+
+            {cityAmbiguityWarning && (
+              <div style={{ marginTop: '8px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid var(--accent-orange)', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', color: 'var(--accent-orange)', fontWeight: 600 }}>
+                {cityAmbiguityWarning}
+              </div>
+            )}
+
+            {/* Interactive Leaflet Map Marker Location Picker */}
+            <div style={{ marginTop: '12px' }}>
+              <label className="form-label" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                🗺️ Anteprima Mappa & Posizionamento Spillo GPS:
+              </label>
+              <MapLocationPicker 
+                lat={parseFloat(newLat)} 
+                lng={parseFloat(newLng)} 
+                onLocationChange={handleMapPinChange} 
+              />
             </div>
           </div>
 
@@ -1246,6 +1241,62 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* Modal Avviso Eventi Vicini nello stesso giorno (≤ 25 km) */}
+      {pendingNearbyEvents.length > 0 && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '16px' }}>
+          <div style={{ background: 'var(--bg-card)', border: '2px solid var(--accent-orange)', borderRadius: '16px', maxWidth: '520px', width: '100%', padding: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', color: 'var(--text-primary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', color: 'var(--accent-orange)' }}>
+              <AlertTriangle size={28} />
+              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
+                Attenzione: Eventi Vicini nello Stesso Giorno!
+              </h3>
+            </div>
+
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: '1.5' }}>
+              Nello stesso giorno scelto (<strong>{newDate}</strong>) esistono già <strong>{pendingNearbyEvents.length}</strong> eventi programmati entro un raggio di <strong>25 km</strong>:
+            </p>
+
+            <div style={{ maxHeight: '200px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '10px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {pendingNearbyEvents.map((evt, idx) => (
+                <div key={idx} style={{ background: 'var(--bg-glass)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-glass)', fontSize: '12px' }}>
+                  <div style={{ fontWeight: 'bold', color: 'var(--accent-gold)' }}>📍 {evt.title}</div>
+                  <div style={{ color: 'var(--text-primary)', marginTop: '2px' }}>
+                    Distanza: <strong>{evt.distanceKm} km</strong> • Comune: {evt.citta} ({evt.provincia})
+                  </div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>
+                    🕒 Ora: {evt.time} • Organizzatore: {evt.organizerName}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setPendingNearbyEvents([])}
+                style={{ flex: 1, minWidth: '160px', padding: '10px' }}
+              >
+                ✏️ Modifica Data o Luogo
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setPendingNearbyEvents([]);
+                  setBypassNearbyWarning(true);
+                  handleCreateEvent(null, true);
+                }}
+                style={{ flex: 1, minWidth: '160px', padding: '10px', background: 'var(--gradient-primary)', border: 'none' }}
+              >
+                🚀 Continua e Pubblica Comunque
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

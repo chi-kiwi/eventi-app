@@ -257,9 +257,14 @@ class LocalDB {
 
   getUsers() {
     try {
-      return JSON.parse(localStorage.getItem("evt_users") || "[]");
+      const users = JSON.parse(localStorage.getItem("evt_users") || "[]");
+      if (!Array.isArray(users) || users.length === 0) {
+        localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
+        return DEFAULT_USERS;
+      }
+      return users;
     } catch (e) {
-      return [];
+      return DEFAULT_USERS;
     }
   }
 
@@ -503,6 +508,7 @@ class LocalDB {
       poster: eventData.poster || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600",
       status: eventData.status || "pubblicato", // pubblicato / bozza / annullato
       visibilita: eventData.visibilita || "pubblico", // pubblico / privato / solo_invitati
+      precisionLevel: eventData.precisionLevel || 'street', // house_number / street / place / city / fallback_manual_marker
       invitedUsers: eventData.invitedUsers || [],
       organizerId,
       views: 0,
@@ -518,6 +524,41 @@ class LocalDB {
     this.saveEvents(events);
 
     return { success: true, event: newEvent, warning };
+  }
+
+  // Haversine distance calculation in kilometers
+  calculateDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return parseFloat((R * c).toFixed(1));
+  }
+
+  // Search for nearby events on the exact same date within radius (default 25 km)
+  findNearbyEventsOnDate(date, lat, lng, radiusKm = 25, excludeEventId = null) {
+    if (!date || !lat || !lng) return [];
+    const events = this.getEvents();
+    const users = this.getUsers();
+
+    return events.filter(evt => {
+      if (excludeEventId && evt.id === excludeEventId) return false;
+      if (evt.status === 'annullato') return false;
+      if (evt.date !== date) return false;
+      if (!evt.gps || typeof evt.gps.lat !== 'number' || typeof evt.gps.lng !== 'number') return false;
+
+      const dist = this.calculateDistanceKm(lat, lng, evt.gps.lat, evt.gps.lng);
+      if (dist <= radiusKm) {
+        const organizer = users.find(u => u.id === evt.organizerId);
+        evt.distanceKm = dist;
+        evt.organizerName = organizer ? `${organizer.name} ${organizer.cognome}` : 'Altro Organizzatore';
+        return true;
+      }
+      return false;
+    });
   }
 
   editEvent(eventId, updatedFields, editorId) {

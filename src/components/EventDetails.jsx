@@ -585,21 +585,25 @@ END:VCALENDAR`;
                 )}
               </div>
             </div>
-            <a
-              href={
-                event.gps && event.gps.lat && event.gps.lng && event.gps.lat !== 45.4642
-                  ? (typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent)
-                      ? `https://maps.apple.com/?q=${event.gps.lat},${event.gps.lng}`
-                      : `https://www.google.com/maps/search/?api=1&query=${event.gps.lat},${event.gps.lng}`)
-                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location || event.title)}`
-              }
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
               className="btn btn-secondary btn-small"
-              style={{ padding: '8px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--gradient-primary)', color: 'white', border: 'none' }}
+              style={{ padding: '8px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--gradient-primary)', color: 'white', border: 'none', cursor: 'pointer' }}
+              onClick={() => {
+                const hasGps = event.gps && typeof event.gps.lat === 'number' && typeof event.gps.lng === 'number' && !isNaN(event.gps.lat) && !isNaN(event.gps.lng);
+                if (!hasGps) {
+                  alert("Coordinate non disponibili per questo evento.");
+                  return;
+                }
+                const isApple = typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
+                const url = isApple 
+                  ? `https://maps.apple.com/?q=${event.gps.lat},${event.gps.lng}`
+                  : `https://www.google.com/maps/search/?api=1&query=${event.gps.lat},${event.gps.lng}`;
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
             >
-              🗺️ {language === 'en' ? "Open Maps" : "Apri Maps"}
-            </a>
+              🗺️ {language === 'en' ? "Open Maps / Directions" : "Apri Maps / Indicazioni"}
+            </button>
           </div>
 
           {/* Enhanced Weather Widget */}

@@ -6,15 +6,12 @@ import { useLanguage } from '../services/i18n.jsx';
 export default function CalendarTab({ user, events = [], onSelectEvent }) {
   const { language, t } = useLanguage();
 
-  // Current view date (default to July 2026 or current real date)
+  // Current view date (default to real current date)
   const today = new Date();
-  const initialYear = today.getFullYear() === 2026 ? 2026 : 2026;
-  const initialMonth = today.getMonth() === 6 ? 6 : 6; // 0-indexed: 6 = July
-
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(6); // 6 = Luglio 2026
-  const [selectedDay, setSelectedDay] = useState(23); // Default 23rd
-  const [calendarFilter, setCalendarFilter] = useState('attending'); // 'attending' | 'all' | 'interested'
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // current real month
+  const [selectedDay, setSelectedDay] = useState(today.getDate()); // current real day
+  const [calendarFilter, setCalendarFilter] = useState('all'); // 'all' | 'attending' | 'interested'
 
   const monthNames = language === 'en' 
     ? ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -53,16 +50,28 @@ export default function CalendarTab({ user, events = [], onSelectEvent }) {
     }
   };
 
-  // Filter events based on active user filter
+  // Filter events based on active user filter & role
   const getFilteredEventsList = () => {
-    if (!user) return events;
-    if (calendarFilter === 'attending') {
-      return events.filter(e => e.goingUsers?.includes(user.id));
+    if (!user) return [];
+
+    const isOrganizer = user.role === 'organizzatore';
+
+    if (isOrganizer) {
+      // Organizer calendar shows: all created events (published & drafts) + events participating in
+      return events.filter(e => 
+        e.organizerId === user.id || 
+        e.goingUsers?.includes(user.id) || 
+        e.interestedUsers?.includes(user.id)
+      );
     }
-    if (calendarFilter === 'interested') {
-      return events.filter(e => e.interestedUsers?.includes(user.id) || e.savedUsers?.includes(user.id));
-    }
-    return events; // 'all'
+
+    // Participant calendar shows ONLY events confirmed: going, interested, saved, or invited
+    return events.filter(e => 
+      e.goingUsers?.includes(user.id) || 
+      e.interestedUsers?.includes(user.id) || 
+      e.savedUsers?.includes(user.id) || 
+      e.invitedUsers?.includes(user.id)
+    );
   };
 
   const filteredEvents = getFilteredEventsList();
