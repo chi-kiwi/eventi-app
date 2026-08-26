@@ -71,6 +71,15 @@ export default function PrivacyModal({ isOpen, onClose }) {
 
           <section>
             <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+              <Lock size={16} style={{ color: 'var(--accent-primary)' }} /> 3. Protezione Liste Partecipanti & Consenso Contatti (GDPR)
+            </h3>
+            <p>
+              La lista dei partecipanti agli eventi è **strettamente privata e riservata** agli organizzatori verificati dell'evento. I partecipanti tradizionali non possono mai consultare la lista degli iscritti. E-mail e numero di telefono vengono mostrati all'organizzatore **esclusivamente se l'utente vi acconsente volontariamente** (consenso <em>shareContactWithOrganizer</em>). In assenza di consenso, i contatti rimangono protetti (<em>🔒 Contatti non condivisi</em>) anche nelle esportazioni CSV.
+            </p>
+          </section>
+
+          <section>
+            <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
               <FileText size={16} style={{ color: 'var(--accent-primary)' }} /> 3. Cookie e Archiviazione Locale (PWA)
             </h3>
             <p>

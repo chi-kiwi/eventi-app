@@ -6,11 +6,15 @@ import { searchItalianComuni } from '../services/comuni';
 export default function OrganizerDashboard({ user, events, onRefreshEvents, onSelectEvent }) {
   const [dashTab, setDashTab] = useState('stats'); // stats / create / collaborators
   
+  // Safe defensive props
+  const safeEvents = Array.isArray(events) ? events : [];
+  const safeUser = user || {};
+
   // Selection of event to view statistics (most recent first)
-  const myEvents = events.filter(e => e.organizerId === user.id || (user.role === 'collaboratore' && e.organizerId === user.invitedBy));
-  const sortedMyEvents = [...myEvents].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const myEvents = safeEvents.filter(e => e && (e.organizerId === safeUser.id || (safeUser.role === 'collaboratore' && e.organizerId === safeUser.invitedBy)));
+  const sortedMyEvents = [...myEvents].sort((a, b) => (b?.date || '').localeCompare(a?.date || ''));
   const [selectedEventId, setSelectedEventId] = useState(sortedMyEvents[0]?.id || '');
-  const activeEvent = sortedMyEvents.find(e => e.id === selectedEventId) || sortedMyEvents[0];
+  const activeEvent = sortedMyEvents.find(e => e?.id === selectedEventId) || sortedMyEvents[0];
 
   // New Event Form State
   const [newTitle, setNewTitle] = useState('');
@@ -714,6 +718,133 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                     </div>
                   );
                 })()}
+              </div>
+
+              {/* Expandable Private Participants List Section */}
+              <div className="glass-panel" style={{ padding: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)' }}>
+                <div 
+                  onClick={() => setShowParticipantsList(!showParticipantsList)}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
+                >
+                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    👥 Partecipanti Iscritti ({activeEvent ? db.getEventParticipantsList(activeEvent.id).length : 0})
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {showParticipantsList ? '▲ Nascondi' : '▼ Mostra Lista Privata'}
+                    </span>
+                  </div>
+                </div>
+
+                {showParticipantsList && activeEvent && (
+                  <div style={{ marginTop: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '12px' }}>
+                    
+                    {/* Controls: Search, Filter, Export CSV */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <input 
+                        type="text"
+                        className="form-input"
+                        placeholder="🔍 Cerca partecipante..."
+                        value={participantSearch}
+                        onChange={(e) => setParticipantSearch(e.target.value)}
+                        style={{ flex: '1 1 180px', padding: '6px 12px', fontSize: '12px' }}
+                      />
+
+                      <select 
+                        className="form-input form-select"
+                        value={participantFilterStatus}
+                        onChange={(e) => setParticipantFilterStatus(e.target.value)}
+                        style={{ width: '140px', padding: '6px 12px', fontSize: '12px' }}
+                      >
+                        <option value="Tutti">Tutti gli stati</option>
+                        <option value="Partecipo">Partecipo ✓</option>
+                        <option value="Mi interessa">Mi interessa ❤️</option>
+                        <option value="Salvato">Salvato 📌</option>
+                      </select>
+
+                      <button 
+                        type="button"
+                        className="btn btn-secondary btn-small"
+                        onClick={() => {
+                          const list = db.getEventParticipantsList(activeEvent.id, user);
+                          if (list.length === 0) {
+                            alert("Nessun iscritto da esportare.");
+                            return;
+                          }
+                          let csv = "Nome,Stato,Email,Telefono\n";
+                          list.forEach(item => {
+                            csv += `"${item.name}","${item.status}","${item.email}","${item.phone}"\n`;
+                          });
+                          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                          const link = document.createElement("a");
+                          link.href = URL.createObjectURL(blob);
+                          link.setAttribute("download", `Partecipanti_${activeEvent.title.replace(/\s+/g, '_')}.csv`);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        style={{ fontSize: '11px', padding: '6px 12px', background: 'var(--gradient-primary)', color: 'white', border: 'none', cursor: 'pointer' }}
+                      >
+                        📥 Esporta CSV
+                      </button>
+                    </div>
+
+                    {/* Participants List */}
+                    {(() => {
+                      const allList = db.getEventParticipantsList(activeEvent.id, user);
+                      const filtered = allList.filter(p => {
+                        const matchesSearch = !participantSearch.trim() || p.name.toLowerCase().includes(participantSearch.toLowerCase()) || (p.hasConsent && p.email.toLowerCase().includes(participantSearch.toLowerCase()));
+                        const matchesStatus = participantFilterStatus === 'Tutti' || p.status === participantFilterStatus;
+                        return matchesSearch && matchesStatus;
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>
+                            Nessun iscritto corrisponde ai filtri selezionati.
+                          </p>
+                        );
+                      }
+
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+                          {filtered.map(p => (
+                            <div 
+                              key={p.id} 
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-glass)', fontSize: '12px' }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <img 
+                                  src={p.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"} 
+                                  alt={p.name} 
+                                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                                />
+                                <div>
+                                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', display: 'block' }}>{p.name}</span>
+                                  {p.hasConsent ? (
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>✉️ {p.email} • 📞 {p.phone}</span>
+                                  ) : (
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>🔒 Contatti non condivisi</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <span className="badge-pill" style={{ 
+                                  backgroundColor: p.status === 'Partecipo' ? 'rgba(16,185,129,0.15)' : (p.status === 'Mi interessa' ? 'rgba(244,63,94,0.15)' : 'rgba(245,158,11,0.15)'), 
+                                  color: p.status === 'Partecipo' ? 'var(--accent-green)' : (p.status === 'Mi interessa' ? 'var(--accent-pink)' : 'var(--accent-orange)'),
+                                  fontSize: '11px',
+                                  fontWeight: 'bold'
+                                }}>
+                                  {p.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* Publish Event Update / Alerts Form */}

@@ -15,14 +15,19 @@ export default function MapLocationPicker({ lat, lng, onLocationChange }) {
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
 
+  const hasValidCoords = typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
+
+    const initialCenter = hasValidCoords ? [lat, lng] : [42.5, 12.5]; // Italy center view if no coords
+    const initialZoom = hasValidCoords ? 16 : 5;
 
     // Initialize map if not created
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
-        center: [lat || 45.7188, lng || 8.5639],
-        zoom: lat ? 16 : 13,
+        center: initialCenter,
+        zoom: initialZoom,
         zoomControl: true
       });
 
@@ -30,40 +35,79 @@ export default function MapLocationPicker({ lat, lng, onLocationChange }) {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
-      // Create draggable marker
-      const marker = L.marker([lat || 45.7188, lng || 8.5639], {
-        draggable: true,
-        title: "Trascina per posizionare il punto esatto dell'evento"
-      }).addTo(map);
+      // Create draggable marker if coords are available
+      if (hasValidCoords) {
+        const marker = L.marker([lat, lng], {
+          draggable: true,
+          title: "Trascina per posizionare il punto esatto dell'evento"
+        }).addTo(map);
 
-      marker.bindPopup("📍 Posizione Evento.<br/><b>Trascina questo spillo</b> per cambiare il punto esatto.").openPopup();
+        marker.bindPopup("📍 Posizione Evento.<br/><b>Trascina questo spillo</b> per cambiare il punto esatto.").openPopup();
 
-      // On marker drag end
-      marker.on('dragend', () => {
-        const newPos = marker.getLatLng();
-        onLocationChange({
-          lat: parseFloat(newPos.lat.toFixed(6)),
-          lng: parseFloat(newPos.lng.toFixed(6))
+        marker.on('dragend', () => {
+          const newPos = marker.getLatLng();
+          onLocationChange({
+            lat: parseFloat(newPos.lat.toFixed(6)),
+            lng: parseFloat(newPos.lng.toFixed(6))
+          });
         });
-      });
 
-      // On map click
+        markerRef.current = marker;
+      }
+
+      // On map click to set or move pin
       map.on('click', (e) => {
         const newPos = e.latlng;
-        marker.setLatLng(newPos);
-        onLocationChange({
-          lat: parseFloat(newPos.lat.toFixed(6)),
-          lng: parseFloat(newPos.lng.toFixed(6))
-        });
+        const newLat = parseFloat(newPos.lat.toFixed(6));
+        const newLng = parseFloat(newPos.lng.toFixed(6));
+
+        if (markerRef.current) {
+          markerRef.current.setLatLng([newLat, newLng]);
+        } else {
+          const marker = L.marker([newLat, newLng], {
+            draggable: true,
+            title: "Trascina per posizionare il punto esatto dell'evento"
+          }).addTo(map);
+
+          marker.bindPopup("📍 Posizione Selezionata.<br/><b>Trascina questo spillo</b> per aggiustarla.").openPopup();
+          
+          marker.on('dragend', () => {
+            const dragPos = marker.getLatLng();
+            onLocationChange({
+              lat: parseFloat(dragPos.lat.toFixed(6)),
+              lng: parseFloat(dragPos.lng.toFixed(6))
+            });
+          });
+
+          markerRef.current = marker;
+        }
+
+        onLocationChange({ lat: newLat, lng: newLng });
       });
 
       mapInstanceRef.current = map;
-      markerRef.current = marker;
     } else {
       // Update existing map & marker
-      if (lat && lng && mapInstanceRef.current && markerRef.current) {
+      if (hasValidCoords && mapInstanceRef.current) {
         mapInstanceRef.current.setView([lat, lng], 16);
-        markerRef.current.setLatLng([lat, lng]);
+        if (markerRef.current) {
+          markerRef.current.setLatLng([lat, lng]);
+        } else {
+          const marker = L.marker([lat, lng], {
+            draggable: true,
+            title: "Trascina per posizionare il punto esatto dell'evento"
+          }).addTo(mapInstanceRef.current);
+
+          marker.on('dragend', () => {
+            const dragPos = marker.getLatLng();
+            onLocationChange({
+              lat: parseFloat(dragPos.lat.toFixed(6)),
+              lng: parseFloat(dragPos.lng.toFixed(6))
+            });
+          });
+
+          markerRef.current = marker;
+        }
       }
     }
 
@@ -75,14 +119,18 @@ export default function MapLocationPicker({ lat, lng, onLocationChange }) {
         markerRef.current = null;
       }
     };
-  }, [lat, lng]);
+  }, [lat, lng, hasValidCoords]);
 
   return (
     <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-glass)', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', marginTop: '8px' }}>
       <div ref={mapContainerRef} style={{ width: '100%', height: '240px' }} />
       <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '8px 12px', fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span>💡</span>
-        <span>Puoi fare clic sulla mappa o trascinare lo spillo rosso per perfezionare la posizione esatta.</span>
+        <span>
+          {hasValidCoords 
+            ? "Puoi fare clic sulla mappa o trascinare lo spillo rosso per perfezionare la posizione esatta." 
+            : "📌 Nessuna coordinata ancora impostata: seleziona un indirizzo o fai clic sulla mappa per posizionare lo spillo."}
+        </span>
       </div>
     </div>
   );

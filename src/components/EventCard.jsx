@@ -69,15 +69,23 @@ export default function EventCard({ event, user, onSelect, onToggleParticipation
 
         {/* Badges Top Right */}
         <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', zIndex: 5 }}>
-          {event.maxCapacity > 0 && (
-            <span className="badge-pill" style={{ backgroundColor: event.goingUsers?.length >= event.maxCapacity ? '#ef4444' : 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 'bold' }}>
-              {event.goingUsers?.length >= event.maxCapacity ? '🚫 SOLD OUT' : `🎟️ ${event.maxCapacity - event.goingUsers.length} posti`}
+          {event.status === 'annullato' ? (
+            <span className="badge-pill" style={{ backgroundColor: '#ef4444', color: 'white', fontWeight: 'bold' }}>
+              🚫 ANNULLATO
             </span>
+          ) : (
+            <>
+              {event.maxCapacity > 0 && (
+                <span className="badge-pill" style={{ backgroundColor: event.goingUsers?.length >= event.maxCapacity ? '#ef4444' : 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 'bold' }}>
+                  {event.goingUsers?.length >= event.maxCapacity ? '🚫 SOLD OUT' : `🎟️ ${event.maxCapacity - event.goingUsers.length} posti`}
+                </span>
+              )}
+              <span className="badge-pill badge-category">{getCategoryLabel(event.category)}</span>
+              <span className="badge-pill" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white' }}>
+                {event.cost === 'Gratuito' && language === 'en' ? 'Free' : event.cost}
+              </span>
+            </>
           )}
-          <span className="badge-pill badge-category">{getCategoryLabel(event.category)}</span>
-          <span className="badge-pill" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', color: 'white' }}>
-            {event.cost === 'Gratuito' && language === 'en' ? 'Free' : event.cost}
-          </span>
         </div>
       </div>
 

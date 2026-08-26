@@ -336,20 +336,21 @@ END:VCALENDAR`;
 
   // Open maps coordinates & full address navigation
   const openDirections = (app) => {
-    const fullLoc = event.location || '';
-    const hasGps = event.gps && event.gps.lat && event.gps.lng;
-    const navQuery = fullLoc.trim() ? encodeURIComponent(fullLoc) : (hasGps ? `${event.gps.lat},${event.gps.lng}` : '');
-    const gpsCoords = hasGps ? `${event.gps.lat},${event.gps.lng}` : '';
+    const hasGps = event.gps && typeof event.gps.lat === 'number' && typeof event.gps.lng === 'number' && !isNaN(event.gps.lat) && !isNaN(event.gps.lng);
+    if (!hasGps) {
+      alert("Coordinate non disponibili per questo evento.");
+      setShowDirectionsMenu(false);
+      return;
+    }
+    const gpsCoords = `${event.gps.lat},${event.gps.lng}`;
 
     let url = '';
     if (app === 'google') {
-      url = `https://www.google.com/maps/dir/?api=1&destination=${navQuery}`;
+      url = `https://www.google.com/maps/dir/?api=1&destination=${gpsCoords}`;
     } else if (app === 'apple') {
-      url = `maps://maps.apple.com/?daddr=${navQuery}`;
+      url = `maps://maps.apple.com/?daddr=${gpsCoords}`;
     } else if (app === 'waze') {
-      url = gpsCoords 
-        ? `https://waze.com/ul?ll=${gpsCoords}&navigate=yes&q=${navQuery}`
-        : `https://waze.com/ul?q=${navQuery}&navigate=yes`;
+      url = `https://waze.com/ul?ll=${gpsCoords}&navigate=yes`;
     }
     window.open(url, '_blank');
     setShowDirectionsMenu(false);
@@ -501,7 +502,16 @@ END:VCALENDAR`;
           <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{language === 'en' ? "Event Details" : "Dettaglio Evento"}</span>
         </div>
         {canEdit && (
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {event.status !== 'annullato' && (
+              <button 
+                onClick={() => setShowCancelModal(true)}
+                className="btn btn-small"
+                style={{ width: 'auto', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer' }}
+              >
+                🚫 {language === 'en' ? "Cancel Event" : "Annulla Evento"}
+              </button>
+            )}
             <button 
               onClick={() => setShowEditModal(true)}
               className="btn btn-secondary btn-small"
@@ -531,7 +541,12 @@ END:VCALENDAR`;
             onError={(e) => { e.target.onerror = null; e.target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' style='background:linear-gradient(135deg, %234f46e5 0%, %23ec4899 100%)'><text x='50%' y='50%' fill='white' font-size='24' font-family='sans-serif' text-anchor='middle' dy='.3em'>Eventi App 🎟️</text></svg>"; }}
           />
           <div style={{ position: 'absolute', bottom: '16px', left: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {event.maxCapacity > 0 && (
+            {event.status === 'annullato' && (
+              <span className="badge-pill" style={{ backgroundColor: '#ef4444', color: 'white', fontWeight: 'bold' }}>
+                🚫 EVENTO ANNULLATO
+              </span>
+            )}
+            {event.maxCapacity > 0 && event.status !== 'annullato' && (
               <span className="badge-pill" style={{ backgroundColor: event.goingUsers?.length >= event.maxCapacity ? '#ef4444' : 'rgba(16,185,129,0.9)', color: 'white', fontWeight: 'bold' }}>
                 {event.goingUsers?.length >= event.maxCapacity ? '🚫 SOLD OUT' : `🎟️ Posti: ${event.goingUsers?.length || 0} / ${event.maxCapacity}`}
               </span>
@@ -545,16 +560,41 @@ END:VCALENDAR`;
       )}
 
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+        {/* Cancellation Notice Banner */}
+        {event.status === 'annullato' && (
+          <div style={{ padding: '16px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', borderRadius: '12px', color: '#ef4444' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: 'bold', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              🚫 Evento Annullato dall'Organizzatore
+            </h4>
+            {event.cancellationReason && (
+              <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-secondary)' }}>
+                Motivo: <em>"{event.cancellationReason}"</em>
+              </p>
+            )}
+          </div>
+        )}
         
         {/* Title & Stats */}
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: '1.2' }}>{event.title}</h1>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               {language === 'en' ? 'Organized by:' : 'Organizzato da:'} <strong>{organizer ? `${organizer.name} ${organizer.cognome}` : (language === 'en' ? 'Organizer' : 'Organizzatore')}</strong>
               {isOrganizerPremium && <span className="verified-badge" title={language === 'en' ? "Certified Organizer" : "Organizzatore Certificato"}>✓</span>}
             </p>
+
+            {user && user.id !== event.organizerId && (
+              <button 
+                type="button" 
+                onClick={handleToggleFollow}
+                className={`btn btn-small ${isFollowingOrganizer ? 'btn-secondary' : 'btn-primary'}`}
+                style={{ padding: '4px 12px', fontSize: '12px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+              >
+                {isFollowingOrganizer ? '✓ Seguito' : '⭐ Segui'} ({followersCount})
+              </button>
+            )}
           </div>
         </div>
 
@@ -585,25 +625,32 @@ END:VCALENDAR`;
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              className="btn btn-secondary btn-small"
-              style={{ padding: '8px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--gradient-primary)', color: 'white', border: 'none', cursor: 'pointer' }}
-              onClick={() => {
-                const hasGps = event.gps && typeof event.gps.lat === 'number' && typeof event.gps.lng === 'number' && !isNaN(event.gps.lat) && !isNaN(event.gps.lng);
-                if (!hasGps) {
-                  alert("Coordinate non disponibili per questo evento.");
-                  return;
-                }
-                const isApple = typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
-                const url = isApple 
-                  ? `https://maps.apple.com/?q=${event.gps.lat},${event.gps.lng}`
-                  : `https://www.google.com/maps/search/?api=1&query=${event.gps.lat},${event.gps.lng}`;
-                window.open(url, '_blank', 'noopener,noreferrer');
-              }}
-            >
-              🗺️ {language === 'en' ? "Open Maps / Directions" : "Apri Maps / Indicazioni"}
-            </button>
+            {(() => {
+              const hasGps = event.gps && typeof event.gps.lat === 'number' && typeof event.gps.lng === 'number' && !isNaN(event.gps.lat) && !isNaN(event.gps.lng);
+              if (!hasGps) {
+                return (
+                  <span style={{ fontSize: '11px', padding: '6px 10px', borderRadius: '8px', background: 'var(--bg-tertiary)', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', fontWeight: 'bold' }}>
+                    📍 Coordinate non disponibili per questo evento
+                  </span>
+                );
+              }
+              return (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-small"
+                  style={{ padding: '8px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--gradient-primary)', color: 'white', border: 'none', cursor: 'pointer' }}
+                  onClick={() => {
+                    const isApple = typeof navigator !== 'undefined' && /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
+                    const url = isApple 
+                      ? `https://maps.apple.com/?q=${event.gps.lat},${event.gps.lng}`
+                      : `https://www.google.com/maps/search/?api=1&query=${event.gps.lat},${event.gps.lng}`;
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  🗺️ {language === 'en' ? "Open Maps / Directions" : "Apri Maps / Indicazioni"}
+                </button>
+              );
+            })()}
           </div>
 
           {/* Enhanced Weather Widget */}
@@ -645,7 +692,8 @@ END:VCALENDAR`;
         <div style={{ display: 'flex', gap: '8px' }}>
           <button 
             className="btn btn-secondary"
-            style={{ flex: 1, backgroundColor: isInterested ? 'rgba(244,63,94,0.1)' : 'var(--bg-tertiary)', borderColor: isInterested ? 'var(--accent-pink)' : 'var(--border-glass)', color: isInterested ? 'var(--accent-pink)' : 'var(--text-primary)' }}
+            disabled={event.status === 'annullato'}
+            style={{ flex: 1, opacity: event.status === 'annullato' ? 0.5 : 1, backgroundColor: isInterested ? 'rgba(244,63,94,0.1)' : 'var(--bg-tertiary)', borderColor: isInterested ? 'var(--accent-pink)' : 'var(--border-glass)', color: isInterested ? 'var(--accent-pink)' : 'var(--text-primary)' }}
             onClick={() => onToggleParticipation(event.id, 'interested')}
           >
             <Heart size={16} fill={isInterested ? 'var(--accent-pink)' : 'none'} />
@@ -654,11 +702,18 @@ END:VCALENDAR`;
 
           <button 
             className="btn"
-            style={{ flex: 1.2, backgroundColor: isGoing ? 'var(--accent-green)' : 'var(--accent-primary)', color: 'white', boxShadow: isGoing ? 'var(--shadow-glow-green)' : 'none' }}
-            onClick={() => onToggleParticipation(event.id, 'going')}
+            disabled={event.status === 'annullato'}
+            style={{ flex: 1.2, opacity: event.status === 'annullato' ? 0.5 : 1, backgroundColor: event.status === 'annullato' ? '#ef4444' : (isGoing ? 'var(--accent-green)' : 'var(--accent-primary)'), color: 'white', boxShadow: isGoing && event.status !== 'annullato' ? 'var(--shadow-glow-green)' : 'none', cursor: event.status === 'annullato' ? 'not-allowed' : 'pointer' }}
+            onClick={() => {
+              if (event.status === 'annullato') {
+                alert("Questo evento è stato annullato e non accetta nuove partecipazioni.");
+                return;
+              }
+              onToggleParticipation(event.id, 'going');
+            }}
           >
             <Check size={16} />
-            <span>{isGoing ? (language === 'en' ? 'Going ✓' : 'Ci sarò ✓') : (language === 'en' ? 'Join Event' : 'Partecipò')}</span>
+            <span>{event.status === 'annullato' ? '🚫 Annullato' : (isGoing ? (language === 'en' ? 'Going ✓' : 'Ci sarò ✓') : (language === 'en' ? 'Join Event' : 'Partecipò'))}</span>
           </button>
 
           <button 
@@ -1224,41 +1279,95 @@ END:VCALENDAR`;
             ⭐ {language === 'en' ? "Participant Reviews" : "Recensioni dei Partecipanti"} ({event.feedback?.length || 0})
           </h3>
 
-          {user ? (
-            <form onSubmit={handleSubmitReview} style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Valutazione:</span>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewRating(star)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: 0 }}
-                    >
-                      {star <= reviewRating ? '⭐' : '☆'}
-                    </button>
-                  ))}
+          {(() => {
+            if (!event || !user) {
+              return (
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Accedi per lasciare una recensione su questo evento.
+                </p>
+              );
+            }
+
+            if (event.status === 'annullato' || event.status === 'bozza') return null;
+
+            const isParticipant = (
+              event.goingUsers?.includes(user.id) ||
+              event.interestedUsers?.includes(user.id) ||
+              user.goingEvents?.includes(event.id)
+            );
+
+            if (!isParticipant) {
+              return (
+                <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  ℹ️ Per lasciare una recensione devi prima aver confermato la partecipazione a questo evento.
                 </div>
-              </div>
+              );
+            }
 
-              <textarea 
-                className="form-input" 
-                placeholder={language === 'en' ? "Write your review about this event..." : "Scrivi la tua recensione o un commento sull'evento..."}
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                style={{ height: '60px', resize: 'none', fontSize: '12px' }}
-              />
+            const hasAlreadyReviewed = event.feedback?.some(f => String(f.userId) === String(user.id) || f.userName === user.name);
+            if (hasAlreadyReviewed) {
+              return (
+                <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--accent-green)', borderRadius: '8px', fontSize: '12px', color: 'var(--accent-green)', fontWeight: 600 }}>
+                  ✓ Hai già inviato la tua recensione per questo evento. Grazie per il tuo feedback!
+                </div>
+              );
+            }
 
-              <button type="submit" className="btn btn-primary btn-small" style={{ alignSelf: 'flex-end', fontSize: '12px' }}>
-                Invia Recensione ⭐
-              </button>
-            </form>
-          ) : (
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              Accedi per lasciare una recensione su questo evento.
-            </p>
-          )}
+            if (!event.date) return null;
+
+            const now = new Date();
+            let eventEnd;
+            if (event.endDateTime) {
+              eventEnd = new Date(event.endDateTime);
+            } else {
+              const dateParts = event.date.split('-').map(Number);
+              if (dateParts.length === 3) {
+                eventEnd = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], 23, 59, 59);
+              } else {
+                eventEnd = new Date(event.date);
+              }
+            }
+
+            if (isNaN(eventEnd.getTime()) || now <= eventEnd) {
+              return (
+                <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  ⏳ La recensione sarà disponibile solo dopo la conclusione dell'evento ({event.date}).
+                </div>
+              );
+            }
+
+            return (
+              <form onSubmit={handleSubmitReview} style={{ background: 'var(--bg-secondary)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Valutazione:</span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewRating(star)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: 0 }}
+                      >
+                        {star <= reviewRating ? '⭐' : '☆'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <textarea 
+                  className="form-input" 
+                  placeholder={language === 'en' ? "Write your review about this event..." : "Scrivi la tua recensione o un commento sull'evento..."}
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  style={{ height: '60px', resize: 'none', fontSize: '12px' }}
+                />
+
+                <button type="submit" className="btn btn-primary btn-small" style={{ alignSelf: 'flex-end', fontSize: '12px' }}>
+                  Invia Recensione ⭐
+                </button>
+              </form>
+            );
+          })()}
 
           {event.feedback && event.feedback.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
@@ -1709,6 +1818,59 @@ END:VCALENDAR`;
                 </button>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Annullamento Evento con Motivazione */}
+      {showCancelModal && (
+        <div className="modal-backdrop" onClick={() => setShowCancelModal(false)}>
+          <div className="modal-content animate-pop-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                🚫 Annulla Evento
+              </h3>
+              <button onClick={() => setShowCancelModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+              Sei sicuro di voler annullare l'evento <strong>"{event.title}"</strong>? L'evento rimarrà visibile come annullato e tutti gli iscritti riceveranno una notifica automatica.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label className="form-label" style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', display: 'block' }}>
+                Motivo dell'annullamento (opzionale):
+              </label>
+              <textarea 
+                className="form-input" 
+                rows="3" 
+                placeholder="Es. Condizioni meteo avverse, imprevisto organizzativo..." 
+                value={cancelReasonInput} 
+                onChange={(e) => setCancelReasonInput(e.target.value)} 
+                style={{ fontSize: '13px', width: '100%' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => setShowCancelModal(false)}
+                style={{ flex: 1 }}
+              >
+                AnnullaOperazione
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-danger" 
+                onClick={handleConfirmCancelEvent}
+                style={{ flex: 1.2, background: '#ef4444', color: 'white', fontWeight: 'bold' }}
+              >
+                🚫 Conferma Annullamento
+              </button>
+            </div>
           </div>
         </div>
       )}

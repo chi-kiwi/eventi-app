@@ -284,7 +284,16 @@ export default function CalendarTab({ user, events = [], onSelectEvent }) {
                 )}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{evt.title}</h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: evt.status === 'annullato' ? '#ef4444' : 'var(--text-primary)', textDecoration: evt.status === 'annullato' ? 'line-through' : 'none' }}>
+                        {evt.title}
+                      </h4>
+                      {evt.status === 'annullato' && (
+                        <span style={{ fontSize: '10px', background: '#ef4444', color: 'white', padding: '1px 6px', borderRadius: '6px', fontWeight: 'bold' }}>
+                          🚫 ANNULLATO
+                        </span>
+                      )}
+                    </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                       <Clock size={12} /> {evt.time}
                     </span>
@@ -293,7 +302,7 @@ export default function CalendarTab({ user, events = [], onSelectEvent }) {
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
                       <MapPin size={11} /> {evt.location.split(',')[0]}
                     </span>
-                    <span style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <span style={{ fontSize: '11px', color: evt.status === 'annullato' ? '#ef4444' : 'var(--accent-green)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <Check size={12} /> {language === 'en' ? "Details" : "Vedi Dettagli"}
                     </span>
                   </div>

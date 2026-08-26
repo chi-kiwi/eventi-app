@@ -483,7 +483,7 @@ class LocalDB {
     const inferredRegion = eventData.regione || organizer?.regione || "Piemonte";
 
     const newEvent = {
-      id: "evt_" + Date.now(),
+      id: "evt_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
       title: eventData.title,
       desc: eventData.desc,
       date: eventData.date,
@@ -494,10 +494,9 @@ class LocalDB {
       regione: inferredRegion,
       cap: eventData.cap || "28040",
       nazione: eventData.nazione || "Italia",
-      gps: {
-        lat: parseFloat(eventData.gps?.lat) || 45.7188,
-        lng: parseFloat(eventData.gps?.lng) || 8.5639
-      },
+      gps: (eventData.gps && typeof eventData.gps.lat === 'number' && typeof eventData.gps.lng === 'number' && !isNaN(eventData.gps.lat) && !isNaN(eventData.gps.lng))
+        ? { lat: parseFloat(eventData.gps.lat), lng: parseFloat(eventData.gps.lng) }
+        : null,
       category: eventData.category || "Feste di paese",
       cost: eventData.cost || "Gratuito",
       maxCapacity: parseInt(eventData.maxCapacity) || 0,
@@ -522,6 +521,25 @@ class LocalDB {
 
     events.push(newEvent);
     this.saveEvents(events);
+
+    // Notify all followers of this organizer
+    const follows = this.getFollows();
+    const followers = follows.filter(f => f.organizerId === organizerId);
+    const orgName = organizer ? `${organizer.name} ${organizer.cognome}` : 'Un organizzatore che segui';
+
+    followers.forEach(f => {
+      const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${f.followerId}`) || "[]");
+      myNotifs.unshift({
+        id: `notif_new_evt_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        title: `👑 Nuovo Evento da ${orgName}!`,
+        text: `${orgName} ha appena pubblicato "${newEvent.title}" (${newEvent.date} a ${newEvent.citta || newEvent.location}).`,
+        timestamp: new Date().toISOString(),
+        type: "new_event",
+        eventId: newEvent.id,
+        read: false
+      });
+      localStorage.setItem(`evt_notifications_${f.followerId}`, JSON.stringify(myNotifs));
+    });
 
     return { success: true, event: newEvent, warning };
   }
@@ -590,8 +608,34 @@ class LocalDB {
       events[index] = { ...event, ...updatedFields };
     }
 
+    const updatedEvent = events[index];
     this.saveEvents(events);
-    return { success: true, event: events[index] };
+
+    // Notify participants if major fields changed (date, location, status)
+    if (updatedFields.date || updatedFields.time || updatedFields.location || updatedFields.citta || updatedFields.status) {
+      const recipients = new Set([
+        ...(updatedEvent.goingUsers || []),
+        ...(updatedEvent.interestedUsers || []),
+        ...(updatedEvent.savedUsers || [])
+      ]);
+
+      recipients.forEach(userId => {
+        if (userId === editorId) return; // Don't notify the editor
+        const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${userId}`) || "[]");
+        myNotifs.unshift({
+          id: `notif_edit_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+          title: `✏️ Evento Modificato: ${updatedEvent.title}`,
+          text: `L'evento "${updatedEvent.title}" è stato aggiornato dall'organizzatore (Data: ${updatedEvent.date}, Luogo: ${updatedEvent.citta || updatedEvent.location}).`,
+          timestamp: new Date().toISOString(),
+          type: "update",
+          eventId: updatedEvent.id,
+          read: false
+        });
+        localStorage.setItem(`evt_notifications_${userId}`, JSON.stringify(myNotifs));
+      });
+    }
+
+    return { success: true, event: updatedEvent };
   }
 
   addBroadcastUpdate(eventId, updateText, senderId) {
@@ -628,6 +672,160 @@ class LocalDB {
     return { success: true, count: recipients.size, event };
   }
 
+  cancelEvent(eventId, cancellerId, reason = '') {
+    const events = this.getEvents();
+    const users = this.getUsers();
+    const index = events.findIndex(e => e.id === eventId);
+    if (index === -1) return { success: false, message: "Evento non trovato." };
+
+    const event = events[index];
+    const canceller = users.find(u => u.id === cancellerId);
+
+    // Permission check: Owner, invited collaborator, or admin
+    const isOwner = event.organizerId === cancellerId;
+    const isInvitedCollaborator = canceller && canceller.role === "collaboratore" && canceller.invitedBy === event.organizerId;
+    const isAdmin = canceller && (canceller.role === "admin" || canceller.email === "chiara@eventiapp.com");
+
+    if (!isOwner && !isInvitedCollaborator && !isAdmin) {
+      return { success: false, message: "Non disponi dell'autorizzazione per annullare questo evento." };
+    }
+
+    event.status = "annullato";
+    event.cancelledAt = new Date().toISOString();
+    event.cancelledBy = cancellerId;
+    event.cancellationReason = reason || "Annullato dall'organizzatore";
+
+    this.saveEvents(events);
+
+    // Send internal notification to all going, interested, and saved users
+    const recipients = new Set([
+      ...(event.goingUsers || []),
+      ...(event.interestedUsers || []),
+      ...(event.savedUsers || [])
+    ]);
+
+    recipients.forEach(userId => {
+      if (userId === cancellerId) return; // Do not notify the person cancelling
+      const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${userId}`) || "[]");
+      myNotifs.unshift({
+        id: `notif_cancel_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        title: `🚫 Evento Annullato: ${event.title}`,
+        text: `L'evento "${event.title}" previsto per il ${event.date} è stato annullato. ${reason ? `Motivo: ${reason}` : ''}`,
+        timestamp: new Date().toISOString(),
+        type: "cancellation",
+        eventId: event.id,
+        read: false
+      });
+      localStorage.setItem(`evt_notifications_${userId}`, JSON.stringify(myNotifs));
+    });
+
+    return { success: true, event, notifiedCount: recipients.size };
+  }
+
+  getEventParticipantsList(eventId, requestingUser = null) {
+    const events = this.getEvents();
+    const users = this.getUsers();
+    const event = events.find(e => e.id === eventId);
+    if (!event) return [];
+
+    // Privacy Guard: Normal participants CANNOT access private attendee list
+    if (requestingUser) {
+      const isOwner = event.organizerId === requestingUser.id;
+      const isInvitedCollab = requestingUser.role === "collaboratore" && requestingUser.invitedBy === event.organizerId;
+      const isAdmin = requestingUser.role === "admin" || requestingUser.email === "chiara@eventiapp.com";
+      if (!isOwner && !isInvitedCollab && !isAdmin) {
+        return []; // Unauthorized request returns empty list
+      }
+    }
+
+    const list = [];
+
+    const processUser = (uId, statusStr, typeKey) => {
+      const u = users.find(user => user.id === uId);
+      if (!u || list.some(item => item.id === u.id)) return;
+
+      const hasConsent = u.shareContactWithOrganizer === true;
+      list.push({
+        id: u.id,
+        name: `${u.name || 'Utente'} ${u.cognome || ''}`.trim(),
+        email: hasConsent ? u.email : '🔒 Non condiviso',
+        phone: hasConsent ? (u.phone || 'Non specificato') : '🔒 Non condiviso',
+        hasConsent,
+        status: statusStr,
+        typeKey: typeKey,
+        joinedAt: event.date,
+        avatar: u.avatar
+      });
+    };
+
+    (event.goingUsers || []).forEach(uId => processUser(uId, 'Partecipo', 'going'));
+    (event.interestedUsers || []).forEach(uId => processUser(uId, 'Mi interessa', 'interested'));
+    (event.savedUsers || []).forEach(uId => processUser(uId, 'Salvato', 'saved'));
+
+    return list;
+  }
+
+  // Follow Organizers Management
+  getFollows() {
+    try {
+      const data = localStorage.getItem("evt_follows");
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  saveFollows(follows) {
+    try {
+      localStorage.setItem("evt_follows", JSON.stringify(follows));
+    } catch (e) {}
+  }
+
+  isFollowing(followerId, organizerId) {
+    if (!followerId || !organizerId) return false;
+    const follows = this.getFollows();
+    return follows.some(f => f.followerId === followerId && f.organizerId === organizerId);
+  }
+
+  getFollowersCount(organizerId) {
+    if (!organizerId) return 0;
+    const follows = this.getFollows();
+    return follows.filter(f => f.organizerId === organizerId).length;
+  }
+
+  getFollowingCount(followerId) {
+    if (!followerId) return 0;
+    const follows = this.getFollows();
+    return follows.filter(f => f.followerId === followerId).length;
+  }
+
+  toggleFollow(followerId, organizerId) {
+    if (!followerId || !organizerId) return { success: false, message: "Utente o organizzatore non valido." };
+    if (followerId === organizerId) {
+      return { success: false, message: "Non puoi seguire te stesso!" };
+    }
+
+    const follows = this.getFollows();
+    const index = follows.findIndex(f => f.followerId === followerId && f.organizerId === organizerId);
+    let isFollowing = false;
+
+    if (index === -1) {
+      follows.push({
+        id: `flw_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        followerId,
+        organizerId,
+        createdAt: new Date().toISOString()
+      });
+      isFollowing = true;
+    } else {
+      follows.splice(index, 1);
+      isFollowing = false;
+    }
+
+    this.saveFollows(follows);
+    return { success: true, isFollowing, count: this.getFollowersCount(organizerId) };
+  }
+
   deleteEvent(eventId, userId) {
     const events = this.getEvents();
     const index = events.findIndex(e => e.id === eventId);
@@ -649,6 +847,9 @@ class LocalDB {
     if (index === -1) return { success: false };
 
     const event = events[index];
+    if (!Array.isArray(event.goingUsers)) event.goingUsers = [];
+    if (!Array.isArray(event.interestedUsers)) event.interestedUsers = [];
+    if (!Array.isArray(event.savedUsers)) event.savedUsers = [];
     
     if (type === 'interested') {
       const idx = event.interestedUsers.indexOf(userId);
@@ -1374,6 +1575,63 @@ class LocalDB {
       message: `Codice di recupero inviato all'indirizzo ${user.email}. Usa il codice per impostare una nuova password.`,
       email: user.email,
       resetCode
+    };
+  }
+
+  // Get aggregated statistics for an event (views, going, interested, geo provenance, age ranges)
+  getEventStats(eventId) {
+    const events = this.getEvents();
+    const event = events.find(e => e.id === eventId);
+    if (!event) {
+      return {
+        views: 0,
+        going: 0,
+        interested: 0,
+        saved: 0,
+        geo: [],
+        age: []
+      };
+    }
+
+    const users = this.getUsers();
+    const goingUserIds = event.goingUsers || [];
+    const interestedUserIds = event.interestedUsers || [];
+
+    const participantIds = [...new Set([...goingUserIds, ...interestedUserIds])];
+    const participants = users.filter(u => participantIds.includes(u.id));
+
+    // Calculate Geo Provenance
+    const geoCount = {};
+    participants.forEach(p => {
+      const city = p.comune || 'Sconosciuto';
+      geoCount[city] = (geoCount[city] || 0) + 1;
+    });
+    const geoArray = Object.entries(geoCount).sort((a, b) => b[1] - a[1]);
+
+    // Calculate Age Ranges
+    const currentYear = new Date().getFullYear();
+    const ageCount = { '18-24': 0, '25-34': 0, '35-49': 0, '50+': 0 };
+    participants.forEach(p => {
+      if (p.dateOfBirth) {
+        const birthYear = new Date(p.dateOfBirth).getFullYear();
+        if (birthYear) {
+          const age = currentYear - birthYear;
+          if (age >= 18 && age <= 24) ageCount['18-24']++;
+          else if (age >= 25 && age <= 34) ageCount['25-34']++;
+          else if (age >= 35 && age <= 49) ageCount['35-49']++;
+          else if (age >= 50) ageCount['50+']++;
+        }
+      }
+    });
+    const ageArray = Object.entries(ageCount).filter(([_, count]) => count > 0);
+
+    return {
+      views: event.views || 0,
+      going: goingUserIds.length,
+      interested: interestedUserIds.length,
+      saved: (event.savedUsers || []).length,
+      geo: geoArray,
+      age: ageArray
     };
   }
 }
