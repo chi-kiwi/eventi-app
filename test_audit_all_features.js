@@ -35,7 +35,7 @@ const initialUsers = db.getUsers();
 assert(initialUsers.length >= 3, "Inizializzazione utenti riuscita con almeno 3 account di default");
 
 // 2. CASE-INSENSITIVE LOGIN
-const login1 = db.login("USER@EVENTS.COM", "password123");
+const login1 = db.login("CHIARA@EVENTIAPP.COM", "password123");
 assert(login1.success && login1.user.name === "Chiara", "Login case-insensitive funzionante");
 
 // 3. REGISTRATION
@@ -108,7 +108,7 @@ assert(!part3.success && part3.message.includes("SOLD OUT"), "Tentativo sopra la
 
 // 9. COMMUNITY MESSAGES & XP
 const initialPoints = db.getUsers().find(u => u.id === user1).points;
-const msgRes = db.addCommunityMessage(createdEvt.id, user1, "Chiara Rossi", "", "Ci saranno tavoli al coperto in caso di pioggia?");
+const msgRes = await db.addCommunityMessage(createdEvt.id, user1, "Chiara Rossi", "", "Ci saranno tavoli al coperto in caso di pioggia?");
 assert(msgRes.success, "Invio messaggio sulla bacheca community riuscito");
 
 const updatedUser = db.getUsers().find(u => u.id === user1);

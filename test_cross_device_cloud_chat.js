@@ -39,11 +39,11 @@ async function runTest() {
   const eventId = "evt_cloud_test_123";
 
   // 1. Utente A invia un messaggio sulla bacheca community
-  const postRes = db.addCommunityMessage(eventId, "usr_1", "Chiara Rossi", "", "Ciao a tutti! Qualcuno viene all'evento stasera?");
+  const postRes = await db.addCommunityMessage(eventId, "usr_1", "Chiara Rossi", "", "Ciao a tutti! Qualcuno viene all'evento stasera?");
   assert(postRes.success && postRes.message.id, "Dispositivo 1 (Chiara) invia messaggio in bacheca");
 
-  // Attesa breve per il sync cloud
-  await new Promise(r => setTimeout(r, 1000));
+  // Attesa per la sincronizzazione cloud
+  await new Promise(r => setTimeout(r, 2500));
 
   // 2. Dispositivo 2 (Marco) simula l'apertura del sito da un altro telefono/computer senza messaggi locali
   localStorage.setItem("evt_community_messages", "[]"); // reset local storage to simulate virgin device
@@ -53,7 +53,7 @@ async function runTest() {
   assert(syncMsgs.length > 0 && syncMsgs.some(m => m.text.includes("Qualcuno viene")), "Dispositivo 2 (Marco) riceve in tempo reale il messaggio di Chiara dal Cloud!");
 
   // 3. Utente B (Marco) risponde sulla bacheca
-  const replyRes = db.addCommunityMessage(eventId, "org_1", "Marco Bianchi", "", "Ciao Chiara! Sì, io e lo staff saremo lì dalle 18:00!");
+  const replyRes = await db.addCommunityMessage(eventId, "org_1", "Marco Bianchi", "", "Ciao Chiara! Sì, io e lo staff saremo lì dalle 18:00!");
   assert(replyRes.success, "Dispositivo 2 (Marco) invia risposta in bacheca");
 
   await new Promise(r => setTimeout(r, 1000));

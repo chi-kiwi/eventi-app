@@ -219,7 +219,16 @@ export default function LandingPage({ events = [], onOpenLogin, onOpenRegister, 
         </div>
 
         <div style={{ opacity: 0.85, marginTop: '4px' }}>
-          <span>Realizzato con <span style={{ color: '#ef4444' }}>❤️</span> da <strong>Chiara Francescon</strong></span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            Realizzato con cura da 
+            <img 
+              src="/logo.jpg" 
+              alt="CF Logo" 
+              style={{ width: '16px', height: '16px', borderRadius: '3px', objectFit: 'cover', border: '1px solid var(--border-glass)' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            /> 
+            <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Chiara Francescon</strong>
+          </span>
         </div>
       </footer>
 
