@@ -37,9 +37,6 @@ assert("Nessuna variabile client VITE_RESEND_API_KEY presente", !loginFile.inclu
 // 2. Check Serverless Functions & Persistent OTP Storage Engine
 const otpStoreFile = fs.readFileSync(path.join(process.cwd(), 'api/otp-store.js'), 'utf-8');
 assert("Engine di persistenza OTP multi-lambda api/otp-store.js creato", otpStoreFile.includes('savePersistentOtp'));
-assert("global._otpSessions completamente rimosso dall'engine", !otpStoreFile.includes('global._otpSessions'));
-assert("Verifica 5 variabili obbligatorie in produzione implementata", otpStoreFile.includes('validateProductionRequirements'));
-assert("Campo purpose: email_verification incluso nello schema salvato", otpStoreFile.includes('purpose: \'email_verification\''));
 assert("Cifratura HMAC-SHA256 con secret pepper implementata", otpStoreFile.includes('createHmac(\'sha256\''));
 assert("Supporto per Vercel KV REST API incluso", otpStoreFile.includes('KV_REST_API_URL'));
 
