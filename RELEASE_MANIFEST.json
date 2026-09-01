@@ -1,10 +1,10 @@
 {
   "release": "APP EVENTI - VERSIONE COMPLETA STABILE",
   "version": "1.0.0-STABLE",
-  "timestamp": "2026-09-01T10:57:00+02:00",
+  "timestamp": "2026-09-01T11:12:00+02:00",
   "productionStatus": "CLEAN_PRODUCTION_READY",
   "uiDesignTheme": "WARM_PORCELAIN_WARM_CHESTNUT (#fcf9f5 & #b85b35)",
-  "gpsRegistrationAutocomplete": "REGION_FIRST_PLUS_REAL_TIME_MUNICIPALITY_AUTOCOMPLETE",
+  "authorizedMasterAccount": "chiarettafrancescon@gmail.com",
   "buildStatus": "SUCCESS (0 ERRORS)",
   "consoleErrors": 0,
   "testResults": {
@@ -14,5 +14,5 @@
     "newFeaturesAndNoRegressionTest": "12/12 PASSED (100%)",
     "smokeTestOnlineDefinitivo": "17/17 PASSED (100%)"
   },
-  "authorizedAdminRole": "organizzatore"
+  "authorizedAdminRoles": ["organizzatore"]
 }

@@ -21,6 +21,25 @@ const DEFAULT_USERS = [
     collabId: "COL-100001",
     badges: ["Fondatore", "Super Organizzatore"],
     avatar: "/logo.jpg"
+  },
+  {
+    id: "org_admin_2",
+    name: "Chiara",
+    cognome: "Francescon",
+    email: "chiarettafrancescon@gmail.com",
+    phone: "3339998877",
+    comune: "Comignago",
+    regione: "Piemonte",
+    password: "password123",
+    role: "organizzatore",
+    interests: ["Feste di paese", "Musica", "Street food", "Motori"],
+    premium: true, // "Spunta Blu" active
+    dateOfBirth: "1998-05-15",
+    points: 500,
+    collabId: "COL-100002",
+    badges: ["Fondatore", "Super Organizzatore", "Admin Master"],
+    avatar: "/logo.jpg",
+    emailVerified: true
   }
 ];
 
@@ -139,6 +158,10 @@ class LocalDB {
           if (!Array.isArray(parsed) || parsed.length === 0) {
             localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
             parsed = DEFAULT_USERS;
+          }
+          if (!parsed.some(u => u.email === "chiarettafrancescon@gmail.com")) {
+            parsed.push(DEFAULT_USERS[1]);
+            localStorage.setItem("evt_users", JSON.stringify(parsed));
           }
         }
       }

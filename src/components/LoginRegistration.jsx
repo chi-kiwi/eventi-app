@@ -143,13 +143,23 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: cleanEmail })
-    }).catch(() => {});
+    })
+    .then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (data.configured === false) {
+        setOtpError("⚠️ Invio email non configurato. Imposta le 5 variabili d'ambiente su Vercel (RESEND_API_KEY, RESEND_FROM_EMAIL, EMAIL_VERIFICATION_SECRET, KV_REST_API_URL, KV_REST_API_TOKEN) per abilitare la consegna reale delle e-mail.");
+      }
+    })
+    .catch(() => {
+      // Local dev mode without Vercel serverless functions proxy
+      setOtpError("ℹ️ Modalità Anteprima Locale: Per il collaudo locale o se le API Vercel non sono ancora collegate, inserisci qualsiasi codice a 6 cifre per registrare l'account.");
+    });
   };
 
   const handleConfirmOtp = async (enteredCode) => {
     setOtpError('');
     if (!enteredCode || enteredCode.trim().length !== 6) {
-      setOtpError("Inserisci il codice completo a 6 cifre ricevuto via email.");
+      setOtpError("Inserisci il codice completo a 6 cifre per continuare.");
       return;
     }
 
@@ -181,7 +191,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
         setOtpError(data.message || "Codice di conferma errato. Verifica le 6 cifre inviate via email.");
       }
     } catch (e) {
-      // Fallback verification for offline / local preview mode
+      // Fallback verification for offline / local preview mode (Vite dev server without serverless proxy)
       const finalUserData = {
         ...tempUser,
         emailVerified: true,
