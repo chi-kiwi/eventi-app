@@ -921,28 +921,15 @@ export default function ProfileTab({ user, onProfileUpdated }) {
                 : `Per autorizzare l'aggiornamento dei tuoi dati, inserisci il codice a 6 cifre inviato all'email ${user.email}:`}
             </p>
 
-            {/* Simulated Email Toast Banner */}
-            <div className="banner" style={{ background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.3)', marginBottom: '16px' }}>
-              <Mail size={18} color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div style={{ textAlign: 'left' }}>
-                <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
-                  {language === 'en' ? "Simulated Email Notice 📩" : "Notifica Email Ricevuta 📩"}
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--text-primary)', marginTop: '2px' }}>
-                  {language === 'en' ? 'Authorization Code:' : 'Codice di conferma:'} <strong style={{ letterSpacing: '2px', color: 'var(--accent-primary)', fontSize: '14px' }}>{profileOtpCode}</strong>
-                </p>
-              </div>
-            </div>
-
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <input 
                 type="text" 
                 maxLength={6}
                 className="form-input" 
-                placeholder="es. 739201" 
+                placeholder="000000" 
                 style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '6px', fontWeight: 'bold' }}
                 value={enteredProfileOtp}
-                onChange={(e) => setEnteredProfileOtp(e.target.value)}
+                onChange={(e) => setEnteredProfileOtp(e.target.value.replace(/\D/g, ''))}
               />
             </div>
 

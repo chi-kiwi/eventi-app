@@ -1,44 +1,44 @@
 :root {
-  --bg-primary: #faf6f0; /* Soft warm cream/porcelain background */
-  --bg-secondary: #ffffff; /* Crisp clean card surface */
-  --bg-tertiary: #f4ece1; /* Soft warm peach element background */
-  --bg-glass: rgba(255, 255, 255, 0.95); /* Frosted soft glass */
-  --border-glass: rgba(232, 80, 91, 0.10); /* Soft warm rose border */
-  --border-glow: rgba(232, 80, 91, 0.20);
+  --bg-primary: #fcf9f5; /* Warm porcelain cream light background */
+  --bg-secondary: #ffffff; /* Crisp white card surface */
+  --bg-tertiary: #f4ece4; /* Soft warm sand / beige element background */
+  --bg-glass: rgba(255, 255, 255, 0.97); /* Clean warm glass */
+  --border-glass: #e8dcd5; /* Soft warm sand border */
+  --border-glow: rgba(184, 91, 53, 0.20);
   
-  --accent-primary: #e8505b; /* Elegant Warm Coral Rose (Festive & Soft) */
-  --accent-secondary: #f07b8b; /* Mellow Soft Coral Pink */
-  --accent-pink: #e05263; /* Refined Festive Crimson */
-  --accent-indigo: #e67e22; /* Warm Mellow Sunset Amber */
-  --accent-cyan: #3498db; /* Gentle Sky Blue */
-  --accent-green: #27ae60; /* Soft Emerald Sage */
-  --accent-orange: #e67e22; /* Warm Mellow Sunset Amber */
+  --accent-primary: #b85b35; /* Warm Chestnut Terracotta Primary */
+  --accent-secondary: #c86d51; /* Soft Warm Terracotta */
+  --accent-pink: #dc2626; /* Crimson Red */
+  --accent-indigo: #d97706; /* Warm Amber */
+  --accent-cyan: #0284c7; /* Sky Blue */
+  --accent-green: #16a34a; /* Sage Green */
+  --accent-orange: #d97706; /* Warm Amber Accent */
   
-  --text-primary: #2d3436; /* Soft warm charcoal */
-  --text-secondary: #636e72; /* Slate grey */
-  --text-muted: #8395a7; /* Cool muted text */
+  --text-primary: #2a201c; /* Dark Warm Espresso Charcoal */
+  --text-secondary: #68564e; /* Warm Slate Brown */
+  --text-muted: #9a877e; /* Muted Warm Taupe */
   
-  --gradient-primary: linear-gradient(135deg, #e8505b 0%, #f07b8b 50%, #e67e22 100%);
-  --gradient-header: rgba(255, 255, 255, 0.96);
-  --gradient-dark: linear-gradient(180deg, #faf6f0 0%, #f4ece1 100%);
+  --gradient-primary: linear-gradient(135deg, #b85b35 0%, #c86d51 100%);
+  --gradient-header: #ffffff;
+  --gradient-dark: #fcf9f5;
   --gradient-card: #ffffff;
-  --gradient-premium: linear-gradient(135deg, #e8505b 0%, #e67e22 50%, #27ae60 100%);
+  --gradient-premium: linear-gradient(135deg, #b85b35 0%, #d97706 100%);
   
-  --shadow-sm: 0 4px 14px rgba(232, 80, 91, 0.05);
-  --shadow-md: 0 10px 28px rgba(232, 80, 91, 0.07);
-  --shadow-glow: 0 8px 20px rgba(232, 80, 91, 0.16);
-  --shadow-glow-pink: 0 8px 20px rgba(240, 123, 139, 0.16);
-  --shadow-glow-green: 0 8px 20px rgba(39, 174, 96, 0.16);
+  --shadow-sm: 0 1px 3px rgba(42, 32, 28, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(42, 32, 28, 0.05), 0 2px 4px -1px rgba(42, 32, 28, 0.03);
+  --shadow-glow: 0 4px 14px rgba(184, 91, 53, 0.15);
+  --shadow-glow-pink: 0 4px 14px rgba(220, 38, 38, 0.12);
+  --shadow-glow-green: 0 4px 14px rgba(22, 163, 74, 0.12);
   
   --font-display: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
   
-  --border-radius-sm: 12px;
-  --border-radius-md: 18px;
-  --border-radius-lg: 28px;
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
   
-  --transition-fast: 0.2s ease;
-  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
 }
 
 [data-theme="dark"] {

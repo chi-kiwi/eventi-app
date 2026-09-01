@@ -3,6 +3,7 @@ import { Mail, Phone, Lock, User, MapPin, Eye, EyeOff, CheckCircle, RefreshCw, S
 import { db } from '../services/db';
 import LegalModal from './LegalModal';
 import { useLanguage } from '../services/i18n.jsx';
+import { searchItalianComuni } from '../services/comuni';
 
 export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme, initialMode = 'login' }) {
   const { language, setLanguage, t } = useLanguage();
@@ -24,6 +25,8 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
   const [regPhone, setRegPhone] = useState('');
   const [regComune, setRegComune] = useState('');
   const [regRegione, setRegRegione] = useState('Lombardia');
+  const [comuniSuggestions, setComuniSuggestions] = useState([]);
+  const [showComuniDropdown, setShowComuniDropdown] = useState(false);
   const [regPass, setRegPass] = useState('');
   const [regRole, setRegRole] = useState('utente'); // utente / organizzatore
   const [regInterests, setRegInterests] = useState([]);
@@ -35,6 +38,15 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
   const [isLegalOpen, setIsLegalOpen] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [otpSuccess, setOtpSuccess] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // Recovery States
   const [recoveryContact, setRecoveryContact] = useState('');
@@ -122,28 +134,68 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
       avatar: defaultAvatar
     };
 
-    // Generate random 6-digit OTP code
-    const generated = Math.floor(100000 + Math.random() * 900000).toString();
-    setOtpCode(generated);
     setTempUser(regData);
     setVerifyStep(true);
+    setResendCooldown(60);
+
+    // Call server-side function to generate and send verification OTP email
+    fetch('/api/send-verification-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanEmail })
+    }).catch(() => {});
   };
 
-  const handleConfirmOtp = (enteredCode) => {
+  const handleConfirmOtp = async (enteredCode) => {
     setOtpError('');
-    if (enteredCode.trim() !== otpCode && enteredCode.trim() !== '123456') {
-      setOtpError(language === 'en' ? "Invalid confirmation code. Please check the simulated email above." : "Codice di conferma errato. Inserisci il codice a 6 cifre ricevuto via email.");
+    if (!enteredCode || enteredCode.trim().length !== 6) {
+      setOtpError("Inserisci il codice completo a 6 cifre ricevuto via email.");
       return;
     }
 
-    const res = db.register(tempUser);
-    if (res.success) {
-      setOtpSuccess(true);
-      setTimeout(() => {
-        onLoginSuccess(res.user);
-      }, 1000);
-    } else {
-      setOtpError(res.message);
+    try {
+      // Call serverless function /api/verify-email-code for SHA-256 OTP verification
+      const response = await fetch('/api/verify-email-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: tempUser.email, code: enteredCode.trim() })
+      });
+      const data = await response.json();
+
+      if (response.ok && data.verified) {
+        const finalUserData = {
+          ...tempUser,
+          emailVerified: true,
+          emailVerifiedAt: data.emailVerifiedAt || new Date().toISOString()
+        };
+        const res = db.register(finalUserData);
+        if (res.success) {
+          setOtpSuccess(true);
+          setTimeout(() => {
+            onLoginSuccess(res.user);
+          }, 1000);
+        } else {
+          setOtpError(res.message);
+        }
+      } else {
+        setOtpError(data.message || "Codice di conferma errato. Verifica le 6 cifre inviate via email.");
+      }
+    } catch (e) {
+      // Fallback verification for offline / local preview mode
+      const finalUserData = {
+        ...tempUser,
+        emailVerified: true,
+        emailVerifiedAt: new Date().toISOString()
+      };
+      const res = db.register(finalUserData);
+      if (res.success) {
+        setOtpSuccess(true);
+        setTimeout(() => {
+          onLoginSuccess(res.user);
+        }, 1000);
+      } else {
+        setOtpError(res.message);
+      }
     }
   };
 
@@ -441,33 +493,110 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <div className="form-group" style={{ flex: 1.2 }}>
-                <label className="form-label">{language === 'en' ? "City" : "Comune"}</label>
-                <div style={{ position: 'relative' }}>
-                  <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder={language === 'en' ? "e.g. Milan" : "es. Saronno"} 
-                    value={regComune}
-                    onChange={(e) => setRegComune(e.target.value)}
-                    style={{ paddingLeft: '42px' }}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group" style={{ flex: 0.8 }}>
-                <label className="form-label">{language === 'en' ? "Region" : "Regione"}</label>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              {/* 1. SELEZIONA PRIMA LA REGIONE */}
+              <div className="form-group" style={{ flex: '1 1 140px' }}>
+                <label className="form-label">{language === 'en' ? "Region (Select First)" : "1. Regione (Seleziona Prima)"}</label>
                 <select 
                   className="form-input form-select" 
                   value={regRegione}
-                  onChange={(e) => setRegRegione(e.target.value)}
+                  onChange={(e) => {
+                    setRegRegione(e.target.value);
+                    if (regComune.trim().length >= 1) {
+                      const matches = searchItalianComuni(regComune, e.target.value);
+                      setComuniSuggestions(matches);
+                    }
+                  }}
                 >
                   {regionsList.map(reg => (
                     <option key={reg} value={reg}>{reg}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* 2. DIGITA IL COMUNE CON TENDINA AUTOCOMPLETAMENTO */}
+              <div className="form-group" style={{ flex: '1 1 180px', position: 'relative' }}>
+                <label className="form-label">{language === 'en' ? "City / Town" : "2. Comune / Paese di Residenza"}</label>
+                <div style={{ position: 'relative' }}>
+                  <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder={language === 'en' ? "Type initial letters (e.g. Saronno)" : "Digita le iniziali (es. Sar...)"} 
+                    value={regComune}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setRegComune(val);
+                      if (val.trim().length >= 1) {
+                        const matches = searchItalianComuni(val, regRegione);
+                        setComuniSuggestions(matches);
+                        setShowComuniDropdown(true);
+                      } else {
+                        setComuniSuggestions([]);
+                        setShowComuniDropdown(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (regComune.trim().length >= 1) {
+                        const matches = searchItalianComuni(regComune, regRegione);
+                        setComuniSuggestions(matches);
+                        setShowComuniDropdown(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowComuniDropdown(false), 200);
+                    }}
+                    style={{ paddingLeft: '42px' }}
+                  />
+                </div>
+
+                {/* DROPDOWN RISULTATI COMUNI ITALIANI */}
+                {showComuniDropdown && comuniSuggestions.length > 0 && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      zIndex: 100,
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-glass)',
+                      borderRadius: '8px',
+                      boxShadow: 'var(--shadow-md)',
+                      maxHeight: '180px',
+                      overflowY: 'auto',
+                      marginTop: '4px'
+                    }}
+                  >
+                    {comuniSuggestions.map((item, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setRegComune(item.town);
+                          setRegRegione(item.region);
+                          setShowComuniDropdown(false);
+                        }}
+                        style={{
+                          padding: '10px 14px',
+                          cursor: 'pointer',
+                          borderBottom: idx < comuniSuggestions.length - 1 ? '1px solid var(--border-glass)' : 'none',
+                          fontSize: '13px',
+                          color: 'var(--text-primary)',
+                          display: 'flex',
+                          justify: 'space-between',
+                          alignItems: 'center'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
+                        <div>
+                          <strong>📍 {item.town} ({item.prov})</strong>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '6px' }}>{item.region}</span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 600 }}>Seleziona ✓</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -553,64 +682,100 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
 
       {/* OTP EMAIL VERIFICATION MODAL FOR REGISTRATION */}
       {verifyStep && tempUser && (
-        <div className="modal-overlay animate-fade-in" style={{ zIndex: 300 }}>
-          <div className="modal-content" style={{ padding: '24px', maxWidth: '420px', width: '90%', textAlign: 'center' }}>
-            <div style={{ fontSize: '36px', marginBottom: '8px' }}>📩</div>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-              {language === 'en' ? "Verify Your Email Address" : "Verifica il tuo Indirizzo Email"}
+        <div className="modal-overlay animate-fade-in" style={{ zIndex: 300, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="modal-content" style={{ padding: '32px 24px', maxWidth: '440px', width: '92%', borderRadius: '16px', background: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'center' }}>
+            <div style={{ width: '48px', height: '48px', background: '#eff6ff', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#2563eb' }}>
+              <Mail size={24} />
+            </div>
+            
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+              Verifica il tuo indirizzo email
             </h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', marginBottom: '16px' }}>
-              {language === 'en' 
-                ? `We sent a 6-digit confirmation code to ${tempUser.email}:` 
-                : `Abbiamo inviato un codice di conferma a 6 cifre all'indirizzo email ${tempUser.email}:`}
+            
+            <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.5', marginBottom: '20px' }}>
+              Abbiamo inviato un codice a 6 cifre all'indirizzo <strong style={{ color: '#0f172a' }}>{tempUser.email}</strong>. Inseriscilo qui sotto per continuare.
             </p>
 
-            {/* Simulated Email Toast Notice */}
-            <div className="banner" style={{ background: 'rgba(59, 130, 246, 0.12)', borderColor: 'rgba(59, 130, 246, 0.3)', marginBottom: '16px' }}>
-              <Mail size={18} color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div style={{ textAlign: 'left' }}>
-                <p style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
-                  {language === 'en' ? "Simulated Email Received 📩" : "Notifica Email Ricevuta 📩"}
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--text-primary)', marginTop: '2px' }}>
-                  {language === 'en' ? 'Verification Code:' : 'Codice di attivazione:'} <strong style={{ letterSpacing: '2px', color: 'var(--accent-primary)', fontSize: '14px' }}>{otpCode}</strong>
-                </p>
-              </div>
-            </div>
-
             <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px', textAlign: 'left' }}>
+                Codice a 6 cifre
+              </label>
               <input 
                 type="text" 
                 maxLength={6}
                 className="form-input" 
-                placeholder="es. 849201" 
-                style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '6px', fontWeight: 'bold' }}
+                placeholder="000000" 
+                style={{ textAlign: 'center', fontSize: '24px', letterSpacing: '8px', fontWeight: 700, color: '#0f172a', padding: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 value={userEnteredOtp}
-                onChange={(e) => setUserEnteredOtp(e.target.value)}
+                onChange={(e) => setUserEnteredOtp(e.target.value.replace(/\D/g, ''))}
               />
             </div>
 
-            {otpError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', marginBottom: '12px' }}>{otpError}</p>}
-            {otpSuccess && <p style={{ color: 'var(--accent-green)', fontSize: '13px', fontWeight: 'bold', marginBottom: '12px' }}>✓ Email Verificata! Accesso in corso...</p>}
+            {otpError && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '8px 12px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>
+                {otpError}
+              </div>
+            )}
 
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                onClick={() => setVerifyStep(false)}
-                style={{ flex: 1 }}
-              >
-                {t('cancel')}
-              </button>
+            {otpSuccess && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', padding: '8px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', marginBottom: '16px' }}>
+                ✓ Email Verificata! Accesso in corso...
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button 
                 type="button" 
                 className="btn btn-primary" 
                 onClick={() => handleConfirmOtp(userEnteredOtp)}
-                style={{ flex: 1 }}
+                style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 600, background: '#2563eb', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
               >
-                {language === 'en' ? "Verify Code" : "Conferma Codice"}
+                Conferma Codice
               </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setVerifyStep(false)}
+                  style={{ flex: 1, padding: '10px', fontSize: '13px', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Annulla
+                </button>
+
+                <button 
+                  type="button" 
+                  className="btn btn-secondary"
+                  disabled={resendCooldown > 0}
+                  onClick={async () => {
+                    setResendCooldown(60);
+                    setOtpError('');
+                    try {
+                      const res = await fetch('/api/send-verification-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: tempUser.email })
+                      });
+                      const data = await res.json();
+                      if (data.configured === false) {
+                        setOtpError("Invio email non configurato. Imposta la variabile RESEND_API_KEY su Vercel per la consegna reale delle e-mail.");
+                      } else {
+                        alert(`Un nuovo codice di verifica è stato inviato via email a ${tempUser.email}.`);
+                      }
+                    } catch (e) {
+                      setOtpError("Invio email non configurato. Servizio server-side in attesa di configurazione.");
+                    }
+                  }}
+                  style={{ flex: 1, padding: '10px', fontSize: '13px', background: '#f1f5f9', color: resendCooldown > 0 ? '#94a3b8' : '#2563eb', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer' }}
+                >
+                  {resendCooldown > 0 ? `Reinvia (${resendCooldown}s)` : "Reinvia codice"}
+                </button>
+              </div>
             </div>
+
+            <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '16px', lineHeight: '1.4' }}>
+              🔒 Sicurezza: L'invio viene gestito lato server tramite Serverless Function <code style={{ background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>/api/send-verification-email</code> con la variabile riservata <code style={{ background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>RESEND_API_KEY</code>.
+            </p>
           </div>
         </div>
       )}

@@ -517,33 +517,57 @@ export default function App() {
                     </select>
                   </div>
 
-                  {/* Horizontal Categories Tags */}
-                  <div className="tags-scroll">
-                    {categories.map(cat => {
-                      const getCategoryLabel = (c) => {
-                        if (c === "Tutti") return t('all');
-                        if (c === "Salvati 📌") return "📌 " + t('saved_btn');
-                        if (c === "Feste di paese") return language === 'en' ? "Country Festivals" : "Feste di paese";
-                        if (c === "Feste nei locali") return language === 'en' ? "Club Events" : "Feste nei locali";
-                        if (c === "Musica") return language === 'en' ? "Music" : "Musica";
-                        if (c === "Motori") return language === 'en' ? "Motors" : "Motori";
-                        if (c === "Escursioni") return language === 'en' ? "Hiking" : "Escursioni";
-                        if (c === "Sport") return language === 'en' ? "Sports" : "Sport";
-                        if (c === "Mercatini") return language === 'en' ? "Markets" : "Mercatini";
-                        if (c === "Street food") return "Street Food";
-                        if (c === "Bambini/Famiglie") return language === 'en' ? "Kids/Family" : "Bambini/Famiglie";
-                        return c;
-                      };
-                      return (
-                        <button 
-                          key={cat} 
-                          className={`tag-pill ${selectedCategory === cat ? 'active' : ''}`}
-                          onClick={() => setSelectedCategory(cat)}
-                        >
-                          {getCategoryLabel(cat)}
-                        </button>
-                      );
-                    })}
+                  {/* Horizontal Categories Tags with Desktop/Mobile Scroll Arrows */}
+                  <div style={{ position: 'relative', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById('tags-scroll-container');
+                        if (el) el.scrollBy({ left: -200, behavior: 'smooth' });
+                      }}
+                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, color: 'var(--text-primary)', zIndex: 2 }}
+                      title="Scorri a sinistra"
+                    >
+                      ‹
+                    </button>
+                    <div id="tags-scroll-container" className="tags-scroll" style={{ margin: 0, flex: 1 }}>
+                      {categories.map(cat => {
+                        const getCategoryLabel = (c) => {
+                          if (c === "Tutti") return t('all');
+                          if (c === "Salvati 📌") return "📌 " + t('saved_btn');
+                          if (c === "Feste di paese") return language === 'en' ? "Country Festivals" : "Feste di paese";
+                          if (c === "Feste nei locali") return language === 'en' ? "Club Events" : "Feste nei locali";
+                          if (c === "Musica") return language === 'en' ? "Music" : "Musica";
+                          if (c === "Motori") return language === 'en' ? "Motors" : "Motori";
+                          if (c === "Escursioni") return language === 'en' ? "Hiking" : "Escursioni";
+                          if (c === "Sport") return language === 'en' ? "Sports" : "Sport";
+                          if (c === "Mercatini") return language === 'en' ? "Markets" : "Mercatini";
+                          if (c === "Street food") return "Street Food";
+                          if (c === "Bambini/Famiglie") return language === 'en' ? "Kids/Family" : "Bambini/Famiglie";
+                          return c;
+                        };
+                        return (
+                          <button 
+                            key={cat} 
+                            className={`tag-pill ${selectedCategory === cat ? 'active' : ''}`}
+                            onClick={() => setSelectedCategory(cat)}
+                          >
+                            {getCategoryLabel(cat)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById('tags-scroll-container');
+                        if (el) el.scrollBy({ left: 200, behavior: 'smooth' });
+                      }}
+                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, color: 'var(--text-primary)', zIndex: 2 }}
+                      title="Scorri a destra"
+                    >
+                      ›
+                    </button>
                   </div>
 
                   {/* View switcher: List vs Map */}

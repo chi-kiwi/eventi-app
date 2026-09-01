@@ -83,22 +83,30 @@ export const COMUNI_ITALIA = [
 ];
 
 /**
- * Cerca comuni italiani corrispondenti alla stringa di ricerca (anche parziale o con indirizzo via/piazza)
+ * Cerca comuni italiani corrispondenti alla stringa di ricerca (con supporto a filtro regione e completamento dalle prime lettere)
  */
-export function searchItalianComuni(query) {
-  if (!query || query.trim().length < 2) return [];
+export function searchItalianComuni(query, filterRegion = null) {
+  if (!query || query.trim().length < 1) return [];
   const cleanQ = query.trim().toLowerCase();
-  const tokens = cleanQ.split(/\s+/).filter(t => t.length >= 2);
+  const tokens = cleanQ.split(/\s+/).filter(t => t.length >= 1);
 
-  const localMatches = COMUNI_ITALIA.filter(c => {
+  let pool = COMUNI_ITALIA;
+  if (filterRegion && filterRegion !== "Tutti") {
+    const normRegion = filterRegion.toLowerCase().trim();
+    // Filter and prioritize municipalities matching the selected region
+    pool = COMUNI_ITALIA.filter(c => c.region.toLowerCase().includes(normRegion) || normRegion.includes(c.region.toLowerCase()));
+    if (pool.length === 0) pool = COMUNI_ITALIA; // fallback to all if no exact region match
+  }
+
+  const localMatches = pool.filter(c => {
     const townLower = c.name.toLowerCase();
     const provLower = c.prov.toLowerCase();
     
-    if (townLower.includes(cleanQ) || cleanQ.includes(townLower)) return true;
+    if (townLower.startsWith(cleanQ) || townLower.includes(cleanQ) || cleanQ.includes(townLower)) return true;
     if (provLower === cleanQ) return true;
 
-    return tokens.some(token => townLower.includes(token) || (token.length >= 4 && townLower.startsWith(token)));
-  }).map(c => ({
+    return tokens.some(token => townLower.startsWith(token) || townLower.includes(token));
+  }).slice(0, 10).map(c => ({
     label: `${c.name} (${c.prov})`,
     fullTitle: `${c.name} (${c.prov}), ${c.region}, Italia`,
     lat: c.lat.toFixed(4),
