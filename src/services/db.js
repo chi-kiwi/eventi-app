@@ -810,11 +810,16 @@ class LocalDB {
 
   deleteEvent(eventId, userId) {
     const events = this.getEvents();
+    const users = this.getUsers();
     const index = events.findIndex(e => e.id === eventId);
     if (index === -1) return { success: false, message: "Evento non trovato." };
 
-    if (events[index].organizerId !== userId) {
-      return { success: false, message: "Solo l'organizzatore principale può eliminare questo evento." };
+    const user = users.find(u => u.id === userId);
+    const isOwner = events[index].organizerId === userId;
+    const isAdmin = user && (user.role === "admin" || user.email === "chiara@eventiapp.com" || user.email === "chiarettafrancescon@gmail.com");
+
+    if (!isOwner && !isAdmin) {
+      return { success: false, message: "Solo l'organizzatore principale o l'amministratore può eliminare questo evento." };
     }
 
     events.splice(index, 1);

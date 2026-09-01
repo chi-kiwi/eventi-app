@@ -182,6 +182,7 @@ export default function EventDetails({ event, user, onBack, onToggleParticipatio
     // Proximity alert: check if there's already any event within 30 km on the same day (excluding itself)
     const sameDayEvents = db.getEvents().filter(evt => evt.date === editDate && evt.id !== event.id);
     const nearbyConflict = sameDayEvents.find(evt => {
+      if (!evt.gps || typeof evt.gps.lat !== 'number' || typeof evt.gps.lng !== 'number') return false;
       const dist = getDistance(parseFloat(currentLat), parseFloat(currentLng), evt.gps.lat, evt.gps.lng);
       return dist <= 30;
     });

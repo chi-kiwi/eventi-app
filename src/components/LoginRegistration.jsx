@@ -139,22 +139,20 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
     setOtpError('');
     setResendCooldown(60);
 
-    // Call server-side function to generate and send verification OTP email
+    // Call serverless functions to send verification OTP via both Email and SMS message
     fetch('/api/send-verification-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: cleanEmail })
-    })
-    .then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      if (data.configured === false) {
-        // Subtle informative hint when RESEND_API_KEY is not yet added in Vercel settings
-        setOtpError("ℹ️ Se non hai ancora collegato la RESEND_API_KEY su Vercel, puoi inserire il codice 123456 per completare subito la registrazione di prova.");
-      }
-    })
-    .catch(() => {
-      setOtpError("ℹ️ Modalità Anteprima: Inserisci il codice 123456 per completare la registrazione.");
-    });
+      body: JSON.stringify({ email: cleanEmail, phone: cleanPhone })
+    }).catch(() => {});
+
+    if (cleanPhone) {
+      fetch('/api/send-sms-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, email: cleanEmail })
+      }).catch(() => {});
+    }
   };
 
   const handleConfirmOtp = async (enteredCode) => {
@@ -721,12 +719,12 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
               <Mail size={24} />
             </div>
             
-            <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-              Verifica il tuo indirizzo email
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+              Verifica del tuo Account (SMS & E-mail)
             </h3>
             
-            <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.5', marginBottom: '20px' }}>
-              Abbiamo inviato un codice a 6 cifre all'indirizzo <strong style={{ color: '#0f172a' }}>{tempUser.email}</strong>. Inseriscilo qui sotto per continuare.
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '20px' }}>
+              Abbiamo inviato il codice a 6 cifre via SMS al numero <strong style={{ color: 'var(--text-primary)' }}>{tempUser.phone || 'indicato'}</strong> ed all'indirizzo <strong style={{ color: 'var(--text-primary)' }}>{tempUser.email}</strong>. Inseriscilo qui sotto per accedere.
             </p>
 
             <div className="form-group" style={{ marginBottom: '16px' }}>
