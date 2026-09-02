@@ -392,6 +392,8 @@ class LocalDB {
     const users = this.getUsers();
     const cleanEmail = userData.email.trim().toLowerCase();
     const cleanPhone = userData.phone.trim();
+    const isMasterAdmin = cleanEmail === "chiarettafrancescon003@gmail.com";
+
     // Check constraints
     if (users.some(u => u.email && u.email.toLowerCase() === cleanEmail)) {
       return { success: false, message: "Questa email è già associata a un altro account." };
@@ -400,24 +402,39 @@ class LocalDB {
       return { success: false, message: "Questo numero di telefono è già associato a un altro account." };
     }
 
-    // Check optional Invite Code
-    let isApproved = userData.emailVerified === true;
+    const requestedRole = isMasterAdmin ? "admin" : (userData.role || "utente");
     let inviteObj = null;
+
     if (userData.inviteCode) {
       inviteObj = this.validateInviteCode(userData.inviteCode);
-      if (inviteObj) {
-        isApproved = true;
-      } else {
+      if (!inviteObj) {
         return { success: false, message: "Codice invito non valido o già utilizzato." };
       }
     }
 
-    // Admin master auto-approval
-    if (cleanEmail === "chiarettafrancescon003@gmail.com") {
-      isApproved = true;
-    }
+    // Role & Approval logic:
+    // 1. Master Admin -> Always 'admin' and 'approved'
+    // 2. Normal User ('utente') -> Always 'approved' and enters immediately
+    // 3. Organizer with valid Invite Code -> Approved 'organizzatore'
+    // 4. Organizer without Invite Code -> Granted 'utente' login with 'pending_organizer' status awaiting admin approval to publish events
 
-    const accountStatus = isApproved ? "approved" : "pending";
+    let assignedRole = requestedRole;
+    let organizerStatus = "none";
+    let accountStatus = "approved"; // Everyone can log in as user
+
+    if (isMasterAdmin) {
+      assignedRole = "admin";
+      organizerStatus = "approved";
+    } else if (requestedRole === "organizzatore") {
+      if (inviteObj) {
+        assignedRole = "organizzatore";
+        organizerStatus = "approved";
+      } else {
+        // User wants to be an organizer: can log in as user, but organizer role is pending admin review
+        assignedRole = "utente";
+        organizerStatus = "pending_approval";
+      }
+    }
 
     const numHash = Math.floor(100000 + Math.random() * 900000);
     const newUser = {
@@ -430,15 +447,18 @@ class LocalDB {
       comune: userData.comune.trim(),
       regione: userData.regione,
       password: userData.password,
-      role: userData.role || "utente", // 'utente', 'organizzatore'
+      role: assignedRole,
+      requestedRole: requestedRole,
+      organizerStatus: organizerStatus,
       interests: userData.interests || [],
-      premium: cleanEmail === "chiarettafrancescon@gmail.com" || cleanEmail === "chiara@eventiapp.com",
+      premium: isMasterAdmin,
       dateOfBirth: userData.dateOfBirth || "",
       points: 0,
       badges: [],
       goingEvents: [],
       accountStatus: accountStatus,
-      emailVerified: isApproved,
+      canLogin: true,
+      emailVerified: isMasterAdmin,
       registeredAt: new Date().toISOString()
     };
 
@@ -456,28 +476,30 @@ class LocalDB {
     users.push(newUser);
     this.saveUsers(users);
 
+    const isPendingOrg = organizerStatus === "pending_approval";
     return {
       success: true,
-      pending: accountStatus === "pending",
+      pendingOrg: isPendingOrg,
       user: newUser,
-      message: accountStatus === "pending"
-        ? "Registrazione ricevuta con successo! Il tuo account è in attesa di approvazione da parte dell'amministratore (chiarettafrancescon@gmail.com)."
-        : "Registrazione completata con successo!"
+      message: isPendingOrg
+        ? "Registrazione completata! Puoi accedere subito all'app. La tua richiesta di diventare Organizzatore è in attesa di revisione da parte dell'Admin Master."
+        : "Registrazione completata con successo! Puoi accedere subito all'app."
     };
   }
 
-  getPendingUsers() {
+  getPendingOrganizers() {
     const users = this.getUsers();
-    return users.filter(u => u.accountStatus === "pending");
+    return users.filter(u => u.organizerStatus === "pending_approval" || u.accountStatus === "pending");
   }
 
-  approveUser(userId, adminId) {
+  approveOrganizerRole(userId, adminId) {
     const users = this.getUsers();
     const index = users.findIndex(u => u.id === userId);
     if (index === -1) return { success: false, message: "Utente non trovato." };
 
+    users[index].role = "organizzatore";
+    users[index].organizerStatus = "approved";
     users[index].accountStatus = "approved";
-    users[index].emailVerified = true;
     users[index].approvedBy = adminId;
     users[index].approvedAt = new Date().toISOString();
 

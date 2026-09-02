@@ -523,7 +523,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
             style={{ flex: 1, background: dashTab === 'approvals' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none', whiteSpace: 'nowrap' }}
             onClick={() => setDashTab('approvals')}
           >
-            Approvazioni ({db.getPendingUsers().length})
+            Approvazioni Organizzatori ({db.getPendingOrganizers().length})
           </button>
         )}
       </div>
@@ -1388,32 +1388,32 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       {dashTab === 'approvals' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Pending Users Approval Queue */}
+          {/* Pending Organizers Role Approval Queue */}
           <div className="card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Shield size={18} color="var(--accent-primary)" />
-              Richieste di Registrazione in Attesa di Approvazione ({db.getPendingUsers().length})
+              Richieste Ruolo Organizzatore in Attesa di Revisione ({db.getPendingOrganizers().length})
             </h3>
 
-            {db.getPendingUsers().length > 0 ? (
+            {db.getPendingOrganizers().length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {db.getPendingUsers().map(user => (
+                {db.getPendingOrganizers().map(user => (
                   <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
                       <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>👤 {user.name} {user.cognome}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>✉️ {user.email} • 📱 {user.phone}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>📍 Comune: {user.comune} ({user.regione}) • Ruolo: <strong>{user.role}</strong></div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>📍 Comune: {user.comune} ({user.regione}) • Ruolo Richiesto: <strong>{user.requestedRole || 'organizzatore'}</strong></div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button 
                         type="button" 
                         className="btn btn-primary btn-small"
                         onClick={() => {
-                          db.approveUser(user.id, safeUser.id);
+                          db.approveOrganizerRole(user.id, safeUser.id);
                           setRefreshCounter(prev => prev + 1);
                         }}
                       >
-                        Approva Account ✅
+                        Approva Organizzatore ✅
                       </button>
                       <button 
                         type="button" 
@@ -1430,7 +1430,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                 ))}
               </div>
             ) : (
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Nessun utente in attesa di approvazione.</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Nessuna richiesta di ruolo Organizzatore in sospeso.</p>
             )}
           </div>
 

@@ -139,12 +139,11 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
 
     const res = db.register(regData);
     if (res.success) {
-      if (res.pending) {
-        setRegSuccess(res.message);
-        setRegError('');
-      } else {
+      setRegSuccess("Registrazione completata con successo! Benvenuto in EventiApp.");
+      setRegError('');
+      setTimeout(() => {
         onLoginSuccess(res.user);
-      }
+      }, 500);
     } else {
       setRegError(res.message);
     }
