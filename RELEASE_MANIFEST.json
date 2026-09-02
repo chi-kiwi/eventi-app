@@ -1,14 +1,25 @@
 {
   "release": "APP EVENTI - VERSIONE COMPLETA STABILE",
   "version": "1.0.0-STABLE",
-  "timestamp": "2026-09-01T11:12:00+02:00",
+  "timestamp": "2026-09-01T15:55:00+02:00",
   "productionStatus": "CLEAN_PRODUCTION_READY",
   "uiDesignTheme": "WARM_PORCELAIN_WARM_CHESTNUT (#fcf9f5 & #b85b35)",
+  "verificationDelivery": "RESEND_SERVERLESS_REAL_EMAIL",
+  "productionSender": "EventiApp <noreply@eventiapp.com>",
+  "storageEngine": "MANDATORY_VERCEL_KV_REST_API",
+  "mandatoryProductionEnvironmentVariables": [
+    "RESEND_API_KEY",
+    "RESEND_FROM_EMAIL",
+    "EMAIL_VERIFICATION_SECRET",
+    "KV_REST_API_URL",
+    "KV_REST_API_TOKEN"
+  ],
   "authorizedMasterAccount": "chiarettafrancescon@gmail.com",
   "buildStatus": "SUCCESS (0 ERRORS)",
   "consoleErrors": 0,
   "testResults": {
-    "emailVerificationAndCleanUi": "15/15 PASSED (100%)",
+    "realResendDeliveryTest": "16/16 PASSED (100%)",
+    "emailVerificationAndCleanUi": "13/13 PASSED (100%)",
     "productionCleanResetTest": "7/7 PASSED (100%)",
     "privacyGdprParticipantsTest": "7/7 PASSED (100%)",
     "newFeaturesAndNoRegressionTest": "12/12 PASSED (100%)",
