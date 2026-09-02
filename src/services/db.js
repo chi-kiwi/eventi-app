@@ -3,23 +3,28 @@
 let _cloudCommunityCache = [];
 let _cloudPrivateCache = [];
 
+const ADMIN_EMAILS = ["chiarettafrancescon003@gmail.com", "chiarettafrancescon@gmail.com", "chiara@eventiapp.com"];
+
 const DEFAULT_USERS = [
   {
-    id: "org_1",
+    id: "org_admin_master",
     name: "Chiara",
     cognome: "Francescon",
-    email: "chiara@eventiapp.com",
+    email: "chiarettafrancescon003@gmail.com",
     phone: "3331234567",
     comune: "Comignago",
     regione: "Piemonte",
     password: "password123",
-    role: "organizzatore",
+    role: "admin",
+    accountStatus: "approved",
+    emailVerified: true,
+    canLogin: true,
     interests: ["Feste di paese", "Musica", "Street food", "Motori"],
-    premium: true, // "Spunta Blu" active
+    premium: true,
     dateOfBirth: "1998-05-15",
     points: 500,
     collabId: "COL-100001",
-    badges: ["Fondatore", "Super Organizzatore"],
+    badges: ["Fondatore", "Super Organizzatore", "Admin Master"],
     avatar: "/logo.jpg"
   },
   {
@@ -31,15 +36,17 @@ const DEFAULT_USERS = [
     comune: "Comignago",
     regione: "Piemonte",
     password: "password123",
-    role: "organizzatore",
+    role: "admin",
+    accountStatus: "approved",
+    emailVerified: true,
+    canLogin: true,
     interests: ["Feste di paese", "Musica", "Street food", "Motori"],
-    premium: true, // "Spunta Blu" active
+    premium: true,
     dateOfBirth: "1998-05-15",
     points: 500,
     collabId: "COL-100002",
     badges: ["Fondatore", "Super Organizzatore", "Admin Master"],
-    avatar: "/logo.jpg",
-    emailVerified: true
+    avatar: "/logo.jpg"
   }
 ];
 
@@ -159,10 +166,20 @@ class LocalDB {
             localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
             parsed = DEFAULT_USERS;
           }
-          if (!parsed.some(u => u.email === "chiarettafrancescon@gmail.com")) {
-            parsed.push(DEFAULT_USERS[1]);
-            localStorage.setItem("evt_users", JSON.stringify(parsed));
+
+          // Ensure chiarettafrancescon003@gmail.com exists and is approved admin master
+          let adminIdx = parsed.findIndex(u => u.email === "chiarettafrancescon003@gmail.com");
+          if (adminIdx === -1) {
+            parsed.unshift(DEFAULT_USERS[0]);
+          } else {
+            parsed[adminIdx].role = "admin";
+            parsed[adminIdx].accountStatus = "approved";
+            parsed[adminIdx].emailVerified = true;
+            parsed[adminIdx].canLogin = true;
+            parsed[adminIdx].premium = true;
           }
+
+          localStorage.setItem("evt_users", JSON.stringify(parsed));
         }
       }
     } catch (e) {
@@ -309,28 +326,48 @@ class LocalDB {
     // Normalize credential: trim whitespace and case‑insensitive email matching
     const normalized = credential.trim();
     const emailNorm = normalized.toLowerCase();
-    const user = users.find(u => (
+
+    // Check master admin auto-healing
+    const isAdminEmail = ADMIN_EMAILS.includes(emailNorm);
+
+    const userIndex = users.findIndex(u => (
       (u.email && u.email.toLowerCase() === emailNorm) ||
       (u.phone && u.phone === normalized)
     ) && u.password === password);
 
-    if (user) {
-      // Check Admin Approval Status
-      if (user.accountStatus === "pending" && user.email !== "chiarettafrancescon@gmail.com" && user.email !== "chiara@eventiapp.com") {
+    if (userIndex !== -1) {
+      const user = users[userIndex];
+
+      // Auto-heal admin master accounts
+      if (isAdminEmail) {
+        user.role = "admin";
+        user.accountStatus = "approved";
+        user.emailVerified = true;
+        user.canLogin = true;
+        user.premium = true;
+        users[userIndex] = user;
+        this.saveUsers(users);
+        return { success: true, user };
+      }
+
+      // Check Admin Approval Status for normal users
+      if (user.accountStatus === "pending") {
         return {
           success: false,
           pending: true,
-          message: "Registrazione ricevuta. Il tuo account è in attesa di approvazione da parte dell'amministratore (chiarettafrancescon@gmail.com)."
+          message: "Il tuo account è in attesa di approvazione. Riceverai accesso quando l'amministratore avrà approvato la registrazione."
         };
       }
       if (user.accountStatus === "rejected") {
         return {
           success: false,
-          message: "La richiesta di registrazione per questo account è stata rifiutata."
+          rejected: true,
+          message: "La tua richiesta di registrazione non è stata approvata."
         };
       }
       return { success: true, user };
     }
+
     return { success: false, message: "Credenziali non valide o password errata." };
   }
 

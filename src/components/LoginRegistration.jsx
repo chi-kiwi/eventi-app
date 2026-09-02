@@ -380,7 +380,7 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="chiara@eventiapp.com o 3331234567" 
+                  placeholder="chiarettafrancescon003@gmail.com o 3331234567" 
                   value={loginCred}
                   onChange={(e) => setLoginCred(e.target.value)}
                   style={{ paddingLeft: '42px' }}
@@ -647,7 +647,27 @@ export default function LoginRegistration({ onLoginSuccess, theme, onToggleTheme
               </div>
             </div>
 
+            <div className="form-group">
+              <label className="form-label">{language === 'en' ? "Admin Invite Code (optional)" : "Codice Invito Admin (opzionale per attivazione immediata)"}</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="es. EVT-X8K2P9" 
+                value={regInviteCode}
+                onChange={(e) => setRegInviteCode(e.target.value.toUpperCase())}
+                style={{ letterSpacing: '1px', textTransform: 'uppercase' }}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                💡 Se hai un codice invito fornito dall'amministratore, inseriscilo qui per accedere subito senza attesa.
+              </span>
+            </div>
+
             {regError && <p style={{ color: 'var(--accent-pink)', fontSize: '13px', marginBottom: '16px' }}>{regError}</p>}
+            {regSuccess && (
+              <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#10b981', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px', lineHeight: '1.5' }}>
+                ✅ {regSuccess}
+              </div>
+            )}
 
             <button type="submit" className="btn btn-primary">
               {language === 'en' ? "Create Account" : "Crea Account"}
