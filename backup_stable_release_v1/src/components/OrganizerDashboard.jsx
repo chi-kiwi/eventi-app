@@ -495,37 +495,28 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
       </div>
 
       {/* Dashboard Sub Tabs */}
-      <div style={{ display: 'flex', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '8px', marginBottom: '20px', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '8px', marginBottom: '20px' }}>
         <button 
           className={`btn btn-small ${dashTab === 'stats' ? 'btn-primary' : ''}`} 
-          style={{ flex: 1, background: dashTab === 'stats' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none', whiteSpace: 'nowrap' }}
+          style={{ flex: 1, background: dashTab === 'stats' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none' }}
           onClick={() => setDashTab('stats')}
         >
           Statistiche
         </button>
         <button 
           className={`btn btn-small ${dashTab === 'create' ? 'btn-primary' : ''}`} 
-          style={{ flex: 1, background: dashTab === 'create' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none', whiteSpace: 'nowrap' }}
+          style={{ flex: 1, background: dashTab === 'create' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none' }}
           onClick={() => setDashTab('create')}
         >
           Crea Evento
         </button>
         <button 
           className={`btn btn-small ${dashTab === 'collaborators' ? 'btn-primary' : ''}`} 
-          style={{ flex: 1, background: dashTab === 'collaborators' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none', whiteSpace: 'nowrap' }}
+          style={{ flex: 1, background: dashTab === 'collaborators' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none' }}
           onClick={() => setDashTab('collaborators')}
         >
           Collaboratori
         </button>
-        {(safeUser.email === 'chiarettafrancescon@gmail.com' || safeUser.email === 'chiara@eventiapp.com' || safeUser.role === 'admin') && (
-          <button 
-            className={`btn btn-small ${dashTab === 'approvals' ? 'btn-primary' : ''}`} 
-            style={{ flex: 1, background: dashTab === 'approvals' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none', whiteSpace: 'nowrap' }}
-            onClick={() => setDashTab('approvals')}
-          >
-            Approvazioni ({db.getPendingUsers().length})
-          </button>
-        )}
       </div>
 
       {/* VIEW: STATS */}
@@ -727,133 +718,6 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
                     </div>
                   );
                 })()}
-              </div>
-
-              {/* Expandable Private Participants List Section */}
-              <div className="glass-panel" style={{ padding: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)' }}>
-                <div 
-                  onClick={() => setShowParticipantsList(!showParticipantsList)}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
-                >
-                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                    👥 Partecipanti Iscritti ({activeEvent ? db.getEventParticipantsList(activeEvent.id).length : 0})
-                  </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      {showParticipantsList ? '▲ Nascondi' : '▼ Mostra Lista Privata'}
-                    </span>
-                  </div>
-                </div>
-
-                {showParticipantsList && activeEvent && (
-                  <div style={{ marginTop: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '12px' }}>
-                    
-                    {/* Controls: Search, Filter, Export CSV */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <input 
-                        type="text"
-                        className="form-input"
-                        placeholder="🔍 Cerca partecipante..."
-                        value={participantSearch}
-                        onChange={(e) => setParticipantSearch(e.target.value)}
-                        style={{ flex: '1 1 180px', padding: '6px 12px', fontSize: '12px' }}
-                      />
-
-                      <select 
-                        className="form-input form-select"
-                        value={participantFilterStatus}
-                        onChange={(e) => setParticipantFilterStatus(e.target.value)}
-                        style={{ width: '140px', padding: '6px 12px', fontSize: '12px' }}
-                      >
-                        <option value="Tutti">Tutti gli stati</option>
-                        <option value="Partecipo">Partecipo ✓</option>
-                        <option value="Mi interessa">Mi interessa ❤️</option>
-                        <option value="Salvato">Salvato 📌</option>
-                      </select>
-
-                      <button 
-                        type="button"
-                        className="btn btn-secondary btn-small"
-                        onClick={() => {
-                          const list = db.getEventParticipantsList(activeEvent.id, user);
-                          if (list.length === 0) {
-                            alert("Nessun iscritto da esportare.");
-                            return;
-                          }
-                          let csv = "Nome,Stato,Email,Telefono\n";
-                          list.forEach(item => {
-                            csv += `"${item.name}","${item.status}","${item.email}","${item.phone}"\n`;
-                          });
-                          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                          const link = document.createElement("a");
-                          link.href = URL.createObjectURL(blob);
-                          link.setAttribute("download", `Partecipanti_${activeEvent.title.replace(/\s+/g, '_')}.csv`);
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                        style={{ fontSize: '11px', padding: '6px 12px', background: 'var(--gradient-primary)', color: 'white', border: 'none', cursor: 'pointer' }}
-                      >
-                        📥 Esporta CSV
-                      </button>
-                    </div>
-
-                    {/* Participants List */}
-                    {(() => {
-                      const allList = db.getEventParticipantsList(activeEvent.id, user);
-                      const filtered = allList.filter(p => {
-                        const matchesSearch = !participantSearch.trim() || p.name.toLowerCase().includes(participantSearch.toLowerCase()) || (p.hasConsent && p.email.toLowerCase().includes(participantSearch.toLowerCase()));
-                        const matchesStatus = participantFilterStatus === 'Tutti' || p.status === participantFilterStatus;
-                        return matchesSearch && matchesStatus;
-                      });
-
-                      if (filtered.length === 0) {
-                        return (
-                          <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '16px' }}>
-                            Nessun iscritto corrisponde ai filtri selezionati.
-                          </p>
-                        );
-                      }
-
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
-                          {filtered.map(p => (
-                            <div 
-                              key={p.id} 
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-glass)', fontSize: '12px' }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <img 
-                                  src={p.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"} 
-                                  alt={p.name} 
-                                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
-                                />
-                                <div>
-                                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', display: 'block' }}>{p.name}</span>
-                                  {p.hasConsent ? (
-                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>✉️ {p.email} • 📞 {p.phone}</span>
-                                  ) : (
-                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>🔒 Contatti non condivisi</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <span className="badge-pill" style={{ 
-                                  backgroundColor: p.status === 'Partecipo' ? 'rgba(16,185,129,0.15)' : (p.status === 'Mi interessa' ? 'rgba(244,63,94,0.15)' : 'rgba(245,158,11,0.15)'), 
-                                  color: p.status === 'Partecipo' ? 'var(--accent-green)' : (p.status === 'Mi interessa' ? 'var(--accent-pink)' : 'var(--accent-orange)'),
-                                  fontSize: '11px',
-                                  fontWeight: 'bold'
-                                }}>
-                                  {p.status}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
               </div>
 
               {/* Publish Event Update / Alerts Form */}
@@ -1379,100 +1243,6 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
             ) : (
               <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Non hai ancora invitato nessun collaboratore.</p>
             )}
-          </div>
-
-        </div>
-      )}
-
-      {/* VIEW: APPROVALS & INVITE CODES (ADMIN MASTER ONLY) */}
-      {dashTab === 'approvals' && (
-        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Pending Users Approval Queue */}
-          <div className="card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Shield size={18} color="var(--accent-primary)" />
-              Richieste di Registrazione in Attesa di Approvazione ({db.getPendingUsers().length})
-            </h3>
-
-            {db.getPendingUsers().length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {db.getPendingUsers().map(user => (
-                  <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>👤 {user.name} {user.cognome}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>✉️ {user.email} • 📱 {user.phone}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>📍 Comune: {user.comune} ({user.regione}) • Ruolo: <strong>{user.role}</strong></div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button 
-                        type="button" 
-                        className="btn btn-primary btn-small"
-                        onClick={() => {
-                          db.approveUser(user.id, safeUser.id);
-                          setRefreshCounter(prev => prev + 1);
-                        }}
-                      >
-                        Approva Account ✅
-                      </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-danger btn-small"
-                        onClick={() => {
-                          db.rejectUser(user.id, safeUser.id);
-                          setRefreshCounter(prev => prev + 1);
-                        }}
-                      >
-                        Rifiuta ❌
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Nessun utente in attesa di approvazione.</p>
-            )}
-          </div>
-
-          {/* Admin Invite Codes Generator */}
-          <div className="card" style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '12px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={18} color="var(--accent-primary)" />
-              Generatore Codici Invito Admin
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              Genera codici invito monouso per consentire la registrazione istantanea senza attendere l'approvazione manuale.
-            </p>
-
-            <button 
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                db.generateInviteCode(safeUser.id, "Invito da Admin Master");
-                setRefreshCounter(prev => prev + 1);
-              }}
-              style={{ marginBottom: '16px' }}
-            >
-              ➕ Genera Nuovo Codice Invito
-            </button>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {db.getInviteCodes().map((inv, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', padding: '10px 14px', borderRadius: '6px', fontSize: '12px' }}>
-                  <div>
-                    <span style={{ fontWeight: 800, letterSpacing: '2px', color: 'var(--accent-primary)', fontSize: '14px' }}>{inv.code}</span>
-                    <span style={{ marginLeft: '12px', color: 'var(--text-secondary)' }}>({inv.note})</span>
-                  </div>
-                  <div>
-                    {inv.used ? (
-                      <span style={{ color: 'var(--accent-pink)', fontWeight: 700 }}>Usato ❌</span>
-                    ) : (
-                      <span style={{ color: '#10b981', fontWeight: 700 }}>Disponibile ✅</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
         </div>

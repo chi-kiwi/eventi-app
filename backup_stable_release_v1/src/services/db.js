@@ -23,23 +23,41 @@ const DEFAULT_USERS = [
     avatar: "/logo.jpg"
   },
   {
-    id: "org_admin_2",
-    name: "Chiara",
-    cognome: "Francescon",
-    email: "chiarettafrancescon@gmail.com",
-    phone: "3339998877",
-    comune: "Comignago",
-    regione: "Piemonte",
+    id: "usr_1",
+    name: "Marco",
+    cognome: "Rossi",
+    email: "user@events.com",
+    phone: "3479876543",
+    comune: "Milano",
+    regione: "Lombardia",
     password: "password123",
-    role: "organizzatore",
-    interests: ["Feste di paese", "Musica", "Street food", "Motori"],
-    premium: true, // "Spunta Blu" active
-    dateOfBirth: "1998-05-15",
-    points: 500,
+    role: "utente",
+    interests: ["Feste nei locali", "Musica"],
+    premium: false,
+    dateOfBirth: "1995-11-20",
+    points: 150,
     collabId: "COL-100002",
-    badges: ["Fondatore", "Super Organizzatore", "Admin Master"],
-    avatar: "/logo.jpg",
-    emailVerified: true
+    badges: ["Esploratore"],
+    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+  },
+  {
+    id: "col_1",
+    name: "Giulia",
+    cognome: "Verdi",
+    email: "collaborator@events.com",
+    phone: "3491112222",
+    comune: "Saronno",
+    regione: "Lombardia",
+    password: "password123",
+    role: "collaboratore",
+    interests: ["Escursioni", "Bambini/Famiglie"],
+    premium: false,
+    dateOfBirth: "1997-02-10",
+    points: 50,
+    collabId: "COL-100003",
+    invitedBy: "org_1",
+    badges: [],
+    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150"
   }
 ];
 
@@ -121,33 +139,6 @@ class LocalDB {
   }
 
   init() {
-    // One-time clean migration to purge legacy demo accounts & mock events
-    try {
-      if (!localStorage.getItem("evt_clean_production_v2")) {
-        const storedUsers = JSON.parse(localStorage.getItem("evt_users") || "[]");
-        const cleanUsers = storedUsers.filter(u => u.id === "org_1" || (!u.id.startsWith("usr_1") && !u.id.startsWith("col_1") && u.email !== "user@events.com" && u.email !== "collaborator@events.com" && !u.name?.includes("Bianchi")));
-        if (!cleanUsers.some(u => u.id === "org_1")) {
-          cleanUsers.unshift(...DEFAULT_USERS);
-        }
-        localStorage.setItem("evt_users", JSON.stringify(cleanUsers));
-
-        const storedEvts = JSON.parse(localStorage.getItem("evt_events") || "[]");
-        const cleanEvts = storedEvts.filter(e => {
-          if (!e || e.isDemo) return false;
-          const t = (e.title || "").toLowerCase();
-          const d = (e.desc || "").toLowerCase();
-          if (t.includes("esempio") || t.includes("zucca") || t.includes("salamella") || t === "ciao" || d === "ciao" || t.includes("test")) return false;
-          return true;
-        });
-        localStorage.setItem("evt_events", JSON.stringify(cleanEvts));
-
-        localStorage.removeItem("evt_community_messages");
-        localStorage.removeItem("evt_messages");
-        localStorage.removeItem("evt_follows");
-        localStorage.setItem("evt_clean_production_v2", "true");
-      }
-    } catch (e) {}
-
     try {
       if (!localStorage.getItem("evt_users")) {
         localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
@@ -155,12 +146,26 @@ class LocalDB {
         let storedUsers = localStorage.getItem("evt_users");
         if (storedUsers) {
           let parsed = JSON.parse(storedUsers);
-          if (!Array.isArray(parsed) || parsed.length === 0) {
+          if (!Array.isArray(parsed)) {
             localStorage.setItem("evt_users", JSON.stringify(DEFAULT_USERS));
             parsed = DEFAULT_USERS;
           }
-          if (!parsed.some(u => u.email === "chiarettafrancescon@gmail.com")) {
-            parsed.push(DEFAULT_USERS[1]);
+          let updated = false;
+          parsed.forEach(u => {
+            if (!u.avatar) {
+              if (u.id === "usr_1") u.avatar = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150";
+              else if (u.id === "org_1") u.avatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150";
+              else if (u.id === "col_1") u.avatar = "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150";
+              else u.avatar = "";
+              updated = true;
+            }
+            if (!u.collabId) {
+              const numHash = Math.abs(u.id.split('').reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) | 0, 0)) % 899999 + 100000;
+              u.collabId = `COL-${numHash}`;
+              updated = true;
+            }
+          });
+          if (updated) {
             localStorage.setItem("evt_users", JSON.stringify(parsed));
           }
         }
@@ -223,7 +228,27 @@ class LocalDB {
 
     try {
       if (!localStorage.getItem("evt_community_messages")) {
-        localStorage.setItem("evt_community_messages", JSON.stringify([]));
+        const defaultCommunityMessages = [
+          {
+            id: "cm_init_1",
+            eventId: "evt_1",
+            userId: "usr_1",
+            userName: "Chiara Rossi",
+            userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+            text: "Ciao a tutti! Qualcuno sa se ci sono opzioni senza glutine tra i food truck?",
+            timestamp: new Date(Date.now() - 7200000).toISOString()
+          },
+          {
+            id: "cm_init_2",
+            eventId: "evt_1",
+            userId: "org_1",
+            userName: "Marco Bianchi",
+            userAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+            text: "Sì Chiara! Ci saranno ben 4 truck dedicati interamente al gluten-free, segnalati all'ingresso. Ti aspettiamo!",
+            timestamp: new Date(Date.now() - 3600000).toISOString()
+          }
+        ];
+        localStorage.setItem("evt_community_messages", JSON.stringify(defaultCommunityMessages));
       }
     } catch (e) {
       console.error("Error initializing community messages:", e);
@@ -255,14 +280,7 @@ class LocalDB {
       if (!Array.isArray(events)) {
         return [];
       }
-      // Strict production filtering rule: exclude demo events and legacy test titles
-      return events.filter(e => {
-        if (!e || e.isDemo) return false;
-        const t = (e.title || "").toLowerCase();
-        const d = (e.desc || "").toLowerCase();
-        if (t.includes("esempio") || t.includes("zucca") || t.includes("salamella") || t === "ciao" || d === "ciao" || t === "test") return false;
-        return true;
-      });
+      return events;
     } catch (e) {
       return [];
     }
@@ -313,63 +331,10 @@ class LocalDB {
       (u.email && u.email.toLowerCase() === emailNorm) ||
       (u.phone && u.phone === normalized)
     ) && u.password === password);
-
     if (user) {
-      // Check Admin Approval Status
-      if (user.accountStatus === "pending" && user.email !== "chiarettafrancescon@gmail.com" && user.email !== "chiara@eventiapp.com") {
-        return {
-          success: false,
-          pending: true,
-          message: "Registrazione ricevuta. Il tuo account è in attesa di approvazione da parte dell'amministratore (chiarettafrancescon@gmail.com)."
-        };
-      }
-      if (user.accountStatus === "rejected") {
-        return {
-          success: false,
-          message: "La richiesta di registrazione per questo account è stata rifiutata."
-        };
-      }
       return { success: true, user };
     }
     return { success: false, message: "Credenziali non valide o password errata." };
-  }
-
-  // Invite Code Management
-  getInviteCodes() {
-    try {
-      return JSON.parse(localStorage.getItem("evt_invite_codes") || "[]");
-    } catch (e) {
-      return [];
-    }
-  }
-
-  saveInviteCodes(codes) {
-    try {
-      localStorage.setItem("evt_invite_codes", JSON.stringify(codes));
-    } catch (e) {}
-  }
-
-  generateInviteCode(adminId, note = "Invito Admin") {
-    const codes = this.getInviteCodes();
-    const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newCode = {
-      code: `EVT-${randomHex}`,
-      createdBy: adminId,
-      createdAt: new Date().toISOString(),
-      used: false,
-      usedBy: null,
-      note
-    };
-    codes.unshift(newCode);
-    this.saveInviteCodes(codes);
-    return newCode;
-  }
-
-  validateInviteCode(inputCode) {
-    if (!inputCode || !inputCode.trim()) return false;
-    const clean = inputCode.trim().toUpperCase();
-    const codes = this.getInviteCodes();
-    return codes.find(c => c.code === clean && !c.used);
   }
 
   register(userData) {
@@ -384,25 +349,6 @@ class LocalDB {
       return { success: false, message: "Questo numero di telefono è già associato a un altro account." };
     }
 
-    // Check optional Invite Code
-    let isApproved = userData.emailVerified === true;
-    let inviteObj = null;
-    if (userData.inviteCode) {
-      inviteObj = this.validateInviteCode(userData.inviteCode);
-      if (inviteObj) {
-        isApproved = true;
-      } else {
-        return { success: false, message: "Codice invito non valido o già utilizzato." };
-      }
-    }
-
-    // Admin master auto-approval
-    if (cleanEmail === "chiarettafrancescon@gmail.com" || cleanEmail === "chiara@eventiapp.com") {
-      isApproved = true;
-    }
-
-    const accountStatus = isApproved ? "approved" : "pending";
-
     const numHash = Math.floor(100000 + Math.random() * 900000);
     const newUser = {
       id: "usr_" + Date.now(),
@@ -416,70 +362,16 @@ class LocalDB {
       password: userData.password,
       role: userData.role || "utente", // 'utente', 'organizzatore'
       interests: userData.interests || [],
-      premium: cleanEmail === "chiarettafrancescon@gmail.com" || cleanEmail === "chiara@eventiapp.com",
+      premium: false,
       dateOfBirth: userData.dateOfBirth || "",
       points: 0,
       badges: [],
-      goingEvents: [],
-      accountStatus: accountStatus,
-      emailVerified: isApproved,
-      registeredAt: new Date().toISOString()
+      goingEvents: []
     };
-
-    if (inviteObj) {
-      const codes = this.getInviteCodes();
-      const idx = codes.findIndex(c => c.code === inviteObj.code);
-      if (idx !== -1) {
-        codes[idx].used = true;
-        codes[idx].usedBy = newUser.id;
-        codes[idx].usedAt = new Date().toISOString();
-        this.saveInviteCodes(codes);
-      }
-    }
 
     users.push(newUser);
     this.saveUsers(users);
-
-    return {
-      success: true,
-      pending: accountStatus === "pending",
-      user: newUser,
-      message: accountStatus === "pending"
-        ? "Registrazione ricevuta con successo! Il tuo account è in attesa di approvazione da parte dell'amministratore (chiarettafrancescon@gmail.com)."
-        : "Registrazione completata con successo!"
-    };
-  }
-
-  getPendingUsers() {
-    const users = this.getUsers();
-    return users.filter(u => u.accountStatus === "pending");
-  }
-
-  approveUser(userId, adminId) {
-    const users = this.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index === -1) return { success: false, message: "Utente non trovato." };
-
-    users[index].accountStatus = "approved";
-    users[index].emailVerified = true;
-    users[index].approvedBy = adminId;
-    users[index].approvedAt = new Date().toISOString();
-
-    this.saveUsers(users);
-    return { success: true, user: users[index] };
-  }
-
-  rejectUser(userId, adminId) {
-    const users = this.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index === -1) return { success: false, message: "Utente non trovato." };
-
-    users[index].accountStatus = "rejected";
-    users[index].rejectedBy = adminId;
-    users[index].rejectedAt = new Date().toISOString();
-
-    this.saveUsers(users);
-    return { success: true };
+    return { success: true, user: newUser };
   }
 
   updateProfile(userId, updatedFields, securityPassword) {
@@ -630,25 +522,6 @@ class LocalDB {
     events.push(newEvent);
     this.saveEvents(events);
 
-    // Notify all followers of this organizer
-    const follows = this.getFollows();
-    const followers = follows.filter(f => f.organizerId === organizerId);
-    const orgName = organizer ? `${organizer.name} ${organizer.cognome}` : 'Un organizzatore che segui';
-
-    followers.forEach(f => {
-      const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${f.followerId}`) || "[]");
-      myNotifs.unshift({
-        id: `notif_new_evt_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-        title: `👑 Nuovo Evento da ${orgName}!`,
-        text: `${orgName} ha appena pubblicato "${newEvent.title}" (${newEvent.date} a ${newEvent.citta || newEvent.location}).`,
-        timestamp: new Date().toISOString(),
-        type: "new_event",
-        eventId: newEvent.id,
-        read: false
-      });
-      localStorage.setItem(`evt_notifications_${f.followerId}`, JSON.stringify(myNotifs));
-    });
-
     return { success: true, event: newEvent, warning };
   }
 
@@ -716,34 +589,8 @@ class LocalDB {
       events[index] = { ...event, ...updatedFields };
     }
 
-    const updatedEvent = events[index];
     this.saveEvents(events);
-
-    // Notify participants if major fields changed (date, location, status)
-    if (updatedFields.date || updatedFields.time || updatedFields.location || updatedFields.citta || updatedFields.status) {
-      const recipients = new Set([
-        ...(updatedEvent.goingUsers || []),
-        ...(updatedEvent.interestedUsers || []),
-        ...(updatedEvent.savedUsers || [])
-      ]);
-
-      recipients.forEach(userId => {
-        if (userId === editorId) return; // Don't notify the editor
-        const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${userId}`) || "[]");
-        myNotifs.unshift({
-          id: `notif_edit_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-          title: `✏️ Evento Modificato: ${updatedEvent.title}`,
-          text: `L'evento "${updatedEvent.title}" è stato aggiornato dall'organizzatore (Data: ${updatedEvent.date}, Luogo: ${updatedEvent.citta || updatedEvent.location}).`,
-          timestamp: new Date().toISOString(),
-          type: "update",
-          eventId: updatedEvent.id,
-          read: false
-        });
-        localStorage.setItem(`evt_notifications_${userId}`, JSON.stringify(myNotifs));
-      });
-    }
-
-    return { success: true, event: updatedEvent };
+    return { success: true, event: events[index] };
   }
 
   addBroadcastUpdate(eventId, updateText, senderId) {
@@ -780,172 +627,13 @@ class LocalDB {
     return { success: true, count: recipients.size, event };
   }
 
-  cancelEvent(eventId, cancellerId, reason = '') {
-    const events = this.getEvents();
-    const users = this.getUsers();
-    const index = events.findIndex(e => e.id === eventId);
-    if (index === -1) return { success: false, message: "Evento non trovato." };
-
-    const event = events[index];
-    const canceller = users.find(u => u.id === cancellerId);
-
-    // Permission check: Owner, invited collaborator, or admin
-    const isOwner = event.organizerId === cancellerId;
-    const isInvitedCollaborator = canceller && canceller.role === "collaboratore" && canceller.invitedBy === event.organizerId;
-    const isAdmin = canceller && (canceller.role === "admin" || canceller.email === "chiara@eventiapp.com");
-
-    if (!isOwner && !isInvitedCollaborator && !isAdmin) {
-      return { success: false, message: "Non disponi dell'autorizzazione per annullare questo evento." };
-    }
-
-    event.status = "annullato";
-    event.cancelledAt = new Date().toISOString();
-    event.cancelledBy = cancellerId;
-    event.cancellationReason = reason || "Annullato dall'organizzatore";
-
-    this.saveEvents(events);
-
-    // Send internal notification to all going, interested, and saved users
-    const recipients = new Set([
-      ...(event.goingUsers || []),
-      ...(event.interestedUsers || []),
-      ...(event.savedUsers || [])
-    ]);
-
-    recipients.forEach(userId => {
-      if (userId === cancellerId) return; // Do not notify the person cancelling
-      const myNotifs = JSON.parse(localStorage.getItem(`evt_notifications_${userId}`) || "[]");
-      myNotifs.unshift({
-        id: `notif_cancel_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-        title: `🚫 Evento Annullato: ${event.title}`,
-        text: `L'evento "${event.title}" previsto per il ${event.date} è stato annullato. ${reason ? `Motivo: ${reason}` : ''}`,
-        timestamp: new Date().toISOString(),
-        type: "cancellation",
-        eventId: event.id,
-        read: false
-      });
-      localStorage.setItem(`evt_notifications_${userId}`, JSON.stringify(myNotifs));
-    });
-
-    return { success: true, event, notifiedCount: recipients.size };
-  }
-
-  getEventParticipantsList(eventId, requestingUser = null) {
-    const events = this.getEvents();
-    const users = this.getUsers();
-    const event = events.find(e => e.id === eventId);
-    if (!event) return [];
-
-    // Privacy Guard: Normal participants CANNOT access private attendee list
-    if (requestingUser) {
-      const isOwner = event.organizerId === requestingUser.id;
-      const isInvitedCollab = requestingUser.role === "collaboratore" && requestingUser.invitedBy === event.organizerId;
-      const isAdmin = requestingUser.role === "admin" || requestingUser.email === "chiara@eventiapp.com";
-      if (!isOwner && !isInvitedCollab && !isAdmin) {
-        return []; // Unauthorized request returns empty list
-      }
-    }
-
-    const list = [];
-
-    const processUser = (uId, statusStr, typeKey) => {
-      const u = users.find(user => user.id === uId);
-      if (!u || list.some(item => item.id === u.id)) return;
-
-      const hasConsent = u.shareContactWithOrganizer === true;
-      list.push({
-        id: u.id,
-        name: `${u.name || 'Utente'} ${u.cognome || ''}`.trim(),
-        email: hasConsent ? u.email : '🔒 Non condiviso',
-        phone: hasConsent ? (u.phone || 'Non specificato') : '🔒 Non condiviso',
-        hasConsent,
-        status: statusStr,
-        typeKey: typeKey,
-        joinedAt: event.date,
-        avatar: u.avatar
-      });
-    };
-
-    (event.goingUsers || []).forEach(uId => processUser(uId, 'Partecipo', 'going'));
-    (event.interestedUsers || []).forEach(uId => processUser(uId, 'Mi interessa', 'interested'));
-    (event.savedUsers || []).forEach(uId => processUser(uId, 'Salvato', 'saved'));
-
-    return list;
-  }
-
-  // Follow Organizers Management
-  getFollows() {
-    try {
-      const data = localStorage.getItem("evt_follows");
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  saveFollows(follows) {
-    try {
-      localStorage.setItem("evt_follows", JSON.stringify(follows));
-    } catch (e) {}
-  }
-
-  isFollowing(followerId, organizerId) {
-    if (!followerId || !organizerId) return false;
-    const follows = this.getFollows();
-    return follows.some(f => f.followerId === followerId && f.organizerId === organizerId);
-  }
-
-  getFollowersCount(organizerId) {
-    if (!organizerId) return 0;
-    const follows = this.getFollows();
-    return follows.filter(f => f.organizerId === organizerId).length;
-  }
-
-  getFollowingCount(followerId) {
-    if (!followerId) return 0;
-    const follows = this.getFollows();
-    return follows.filter(f => f.followerId === followerId).length;
-  }
-
-  toggleFollow(followerId, organizerId) {
-    if (!followerId || !organizerId) return { success: false, message: "Utente o organizzatore non valido." };
-    if (followerId === organizerId) {
-      return { success: false, message: "Non puoi seguire te stesso!" };
-    }
-
-    const follows = this.getFollows();
-    const index = follows.findIndex(f => f.followerId === followerId && f.organizerId === organizerId);
-    let isFollowing = false;
-
-    if (index === -1) {
-      follows.push({
-        id: `flw_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-        followerId,
-        organizerId,
-        createdAt: new Date().toISOString()
-      });
-      isFollowing = true;
-    } else {
-      follows.splice(index, 1);
-      isFollowing = false;
-    }
-
-    this.saveFollows(follows);
-    return { success: true, isFollowing, count: this.getFollowersCount(organizerId) };
-  }
-
   deleteEvent(eventId, userId) {
     const events = this.getEvents();
-    const users = this.getUsers();
     const index = events.findIndex(e => e.id === eventId);
     if (index === -1) return { success: false, message: "Evento non trovato." };
 
-    const user = users.find(u => u.id === userId);
-    const isOwner = events[index].organizerId === userId;
-    const isAdmin = user && (user.role === "admin" || user.email === "chiara@eventiapp.com" || user.email === "chiarettafrancescon@gmail.com");
-
-    if (!isOwner && !isAdmin) {
-      return { success: false, message: "Solo l'organizzatore principale o l'amministratore può eliminare questo evento." };
+    if (events[index].organizerId !== userId) {
+      return { success: false, message: "Solo l'organizzatore principale può eliminare questo evento." };
     }
 
     events.splice(index, 1);

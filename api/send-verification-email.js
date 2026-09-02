@@ -1,7 +1,15 @@
-// Vercel Serverless Function: Multi-Provider Real Email Verification Sender Engine
-// Supports Resend, Brevo (Sendinblue), SendGrid, and Zero-Config Public Mail Relay Fallback (FormSubmit)
+// Vercel Serverless Function: Secure Server-Side Email Verification Sender
+// Sends real verification emails via Resend HTTP API whenever all 5 production variables are set.
 
-import { savePersistentOtp } from './otp-store.js';
+import { savePersistentOtp, validateProductionRequirements } from './otp-store.js';
+
+// Safe email masking helper for server logs (e.g., u***e@email.it)
+function maskEmail(email) {
+  if (!email || !email.includes('@')) return '***@***';
+  const [local, domain] = email.split('@');
+  const maskedLocal = local.length > 2 ? `${local[0]}***${local[local.length - 1]}` : `${local[0]}***`;
+  return `${maskedLocal}@${domain}`;
+}
 
 export default async function handler(req, res) {
   // CORS Headers
@@ -19,19 +27,35 @@ export default async function handler(req, res) {
 
   try {
     const { email } = req.body || {};
-    if (!email || !email.includes('@')) {
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
       return res.status(400).json({ success: false, message: 'Indirizzo e-mail non valido' });
     }
 
     const normEmail = email.trim().toLowerCase();
+    console.log(`[send-verification-email] Richiesta ricevuta per destinatario: ${maskEmail(normEmail)}`);
 
-    // Generate random 6-digit OTP server-side
+    // Strict production environment requirement validation
+    const guard = validateProductionRequirements();
+    if (!guard.valid) {
+      console.warn(`[send-verification-email] Configurazione incompleta su Vercel: ${guard.message}`);
+      return res.status(500).json({
+        success: false,
+        configured: false,
+        message: guard.message
+      });
+    }
+
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'EventiApp <noreply@eventiapp.com>';
+
+    // Generate random 6-digit OTP code server-side
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Persist OTP session across all serverless lambda instances (HMAC-SHA256)
+    // Persist OTP session across all serverless lambda instances (HMAC-SHA256 encrypted pepper)
     await savePersistentOtp(normEmail, otpCode);
+    console.log(`[send-verification-email] Sessione OTP salvata in Vercel KV per destinatario: ${maskEmail(normEmail)}`);
 
-    const emailSubject = `EventiApp – Codice di verifica indirizzo e-mail: ${otpCode}`;
+    const emailSubject = `EventiApp – Codice di verifica indirizzo e-mail`;
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #b85b35; margin-top: 0;">EventiApp 🎟️</h2>
@@ -44,104 +68,47 @@ export default async function handler(req, res) {
       </div>
     `;
 
-    // 1. Try Provider 1: Resend HTTP API (RESEND_API_KEY)
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 'EventiApp <onboarding@resend.dev>';
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: fromEmail,
-            to: [normEmail],
-            subject: emailSubject,
-            html: emailHtml
-          })
-        });
-
-        if (response.ok) {
-          return res.status(200).json({
-            success: true,
-            provider: 'Resend',
-            configured: true,
-            message: 'Email di verifica inviata con successo via Resend.'
-          });
-        }
-      } catch (e) {
-        console.error("Resend delivery failed, trying secondary relay...", e);
-      }
-    }
-
-    // 2. Try Provider 2: Brevo / Sendinblue REST API (BREVO_API_KEY)
-    if (process.env.BREVO_API_KEY) {
-      try {
-        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-          method: 'POST',
-          headers: {
-            'api-key': process.env.BREVO_API_KEY,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            sender: { name: 'EventiApp', email: process.env.BREVO_FROM_EMAIL || 'noreply@eventiapp.com' },
-            to: [{ email: normEmail }],
-            subject: emailSubject,
-            htmlContent: emailHtml
-          })
-        });
-
-        if (response.ok) {
-          return res.status(200).json({
-            success: true,
-            provider: 'Brevo',
-            configured: true,
-            message: 'Email di verifica inviata con successo via Brevo.'
-          });
-        }
-      } catch (e) {
-        console.error("Brevo delivery failed...", e);
-      }
-    }
-
-    // 3. Zero-Config Public Relay Fallback (FormSubmit / Web3Forms)
-    try {
-      const relayRes = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(normEmail)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          _subject: `EventiApp – Codice di verifica: ${otpCode}`,
-          _captcha: 'false',
-          _template: 'basic',
-          messaggio: `Il tuo codice di verifica per EventiApp è: ${otpCode}. Inserisci questo codice nell'applicazione per completare la registrazione.`
-        })
-      });
-
-      if (relayRes.ok) {
-        return res.status(200).json({
-          success: true,
-          provider: 'FormSubmit',
-          configured: true,
-          message: `Email con codice OTP inviata con successo a ${normEmail}.`
-        });
-      }
-    } catch (relayErr) {
-      console.error("Public Relay delivery failed...", relayErr);
-    }
-
-    // Return response acknowledging OTP generated for verification
-    return res.status(200).json({
-      success: true,
-      configured: false,
-      message: `Codice OTP (${otpCode}) registrato ed in attesa di verifica per l'indirizzo ${normEmail}.`
+    // Call Resend Server-Side HTTP API securely
+    console.log(`[send-verification-email] Chiamata API Resend per ${maskEmail(normEmail)} via mittente ${fromEmail}...`);
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [normEmail],
+        subject: emailSubject,
+        html: emailHtml
+      })
     });
 
+    const resendData = await resendResponse.json().catch(() => ({}));
+    console.log(`[send-verification-email] Risposta Resend HTTP Status: ${resendResponse.status}`);
+
+    if (resendResponse.ok && resendData.id) {
+      console.log(`[send-verification-email] Email inviata con successo via Resend. Message ID: ${resendData.id}`);
+      return res.status(200).json({
+        success: true,
+        configured: true,
+        provider: 'Resend',
+        messageId: resendData.id,
+        message: 'Email di verifica inviata con successo. Controlla la tua casella di posta e la cartella Spam.'
+      });
+    } else {
+      console.error(`[send-verification-email] Errore risposta Resend per ${maskEmail(normEmail)}:`, resendData.message || resendData);
+      return res.status(500).json({
+        success: false,
+        configured: true,
+        provider: 'Resend',
+        error: resendData,
+        message: resendData.message || 'Errore durante l’invio dell’email via Resend. Verificare che il mittente ed il dominio siano autorizzati.'
+      });
+    }
+
   } catch (error) {
+    console.error(`[send-verification-email] Errore eccezione serverless:`, error.message);
     return res.status(500).json({
       success: false,
       configured: false,

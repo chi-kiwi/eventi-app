@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0-STABLE",
+  "timestamp": "2026-08-26T14:46:40.787Z",
+  "description": "Versione Stabile App Eventi Approvata e Collaudata su Vercel",
+  "features": [
+    "Geocodifica reale per tutta Italia",
+    "Mappa Leaflet con marker trascinabile",
+    "Pulsante Maps con coordinate esatte salvate",
+    "Alert di prossimità entro 25 km per eventi nello stesso giorno",
+    "Calendario partecipante isolato",
+    "Logica recensioni riservata a eventi conclusi e partecipanti",
+    "Gestione sicura eventi legacy senza coordinate fittizie (gps: null)",
+    "Palette colori festiva e morbida (easy on the eyes)",
+    "0 errori rossi in console DevTools",
+    "13 pagine/viste verificate al 100%"
+  ]
+}

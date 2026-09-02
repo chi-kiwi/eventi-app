@@ -1,0 +1,18 @@
+{
+  "short_name": "EventiApp",
+  "name": "EventiApp – Eventi, Feste e Sagre Vicino a Te",
+  "description": "Scopri ed organizza eventi, sagre, feste nei locali e concerti vicini a te. Pass QR Code, Mappa GPS e Bacheca in tempo reale.",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#fff9f5",
+  "theme_color": "#ff4757",
+  "display": "standalone",
+  "orientation": "portrait"
+}

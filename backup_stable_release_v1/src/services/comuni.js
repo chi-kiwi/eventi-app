@@ -83,30 +83,22 @@ export const COMUNI_ITALIA = [
 ];
 
 /**
- * Cerca comuni italiani corrispondenti alla stringa di ricerca (con supporto a filtro regione e completamento dalle prime lettere)
+ * Cerca comuni italiani corrispondenti alla stringa di ricerca (anche parziale o con indirizzo via/piazza)
  */
-export function searchItalianComuni(query, filterRegion = null) {
-  if (!query || query.trim().length < 1) return [];
+export function searchItalianComuni(query) {
+  if (!query || query.trim().length < 2) return [];
   const cleanQ = query.trim().toLowerCase();
-  const tokens = cleanQ.split(/\s+/).filter(t => t.length >= 1);
+  const tokens = cleanQ.split(/\s+/).filter(t => t.length >= 2);
 
-  let pool = COMUNI_ITALIA;
-  if (filterRegion && filterRegion !== "Tutti") {
-    const normRegion = filterRegion.toLowerCase().trim();
-    // Filter and prioritize municipalities matching the selected region
-    pool = COMUNI_ITALIA.filter(c => c.region.toLowerCase().includes(normRegion) || normRegion.includes(c.region.toLowerCase()));
-    if (pool.length === 0) pool = COMUNI_ITALIA; // fallback to all if no exact region match
-  }
-
-  const localMatches = pool.filter(c => {
+  const localMatches = COMUNI_ITALIA.filter(c => {
     const townLower = c.name.toLowerCase();
     const provLower = c.prov.toLowerCase();
     
-    if (townLower.startsWith(cleanQ) || townLower.includes(cleanQ) || cleanQ.includes(townLower)) return true;
+    if (townLower.includes(cleanQ) || cleanQ.includes(townLower)) return true;
     if (provLower === cleanQ) return true;
 
-    return tokens.some(token => townLower.startsWith(token) || townLower.includes(token));
-  }).slice(0, 10).map(c => ({
+    return tokens.some(token => townLower.includes(token) || (token.length >= 4 && townLower.startsWith(token)));
+  }).map(c => ({
     label: `${c.name} (${c.prov})`,
     fullTitle: `${c.name} (${c.prov}), ${c.region}, Italia`,
     lat: c.lat.toFixed(4),
@@ -170,59 +162,3 @@ export function resolveLocationDetails(addressInput, defaultRegion = "Piemonte")
     lng: 8.5639
   };
 }
-
-// Nominatim OpenStreetMap Geocoding with LocalStorage Cache & Rate Limiting (1 req/sec)
-let lastNominatimCallTime = 0;
-const NOMINATIM_CACHE_PREFIX = 'evt_nominatim_cache_';
-
-export async function fetchNominatimGeocoding(address) {
-  if (!address || !address.trim()) return null;
-  const cleanAddr = address.trim().toLowerCase();
-  const cacheKey = NOMINATIM_CACHE_PREFIX + cleanAddr;
-
-  // 1. Check LocalStorage Cache
-  try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
-  } catch (e) {}
-
-  // 2. Enforce 1 req/sec rate limit for OpenStreetMap Usage Policy
-  const now = Date.now();
-  const timeSinceLast = now - lastNominatimCallTime;
-  if (timeSinceLast < 1000) {
-    await new Promise(r => setTimeout(r, 1000 - timeSinceLast));
-  }
-  lastNominatimCallTime = Date.now();
-
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanAddr + ', Italia')}&limit=1`;
-    const res = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'EventiApp/1.0 (contact@eventiapp.com)'
-      }
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const result = {
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon),
-          displayName: data[0].display_name
-        };
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(result));
-        } catch (e) {}
-        return result;
-      }
-    }
-  } catch (e) {
-    console.warn("Nominatim OSM Geocoding unavailable, using local municipality database fallback.");
-  }
-
-  return null;
-}
-
