@@ -517,7 +517,7 @@ export default function OrganizerDashboard({ user, events, onRefreshEvents, onSe
         >
           Collaboratori
         </button>
-        {(safeUser.email === 'chiarettafrancescon@gmail.com' || safeUser.email === 'chiara@eventiapp.com' || safeUser.role === 'admin') && (
+        {(safeUser.email === 'chiarettafrancescon003@gmail.com' || safeUser.role === 'admin') && (
           <button 
             className={`btn btn-small ${dashTab === 'approvals' ? 'btn-primary' : ''}`} 
             style={{ flex: 1, background: dashTab === 'approvals' ? 'var(--gradient-primary)' : 'transparent', boxShadow: 'none', whiteSpace: 'nowrap' }}

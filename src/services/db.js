@@ -3,7 +3,7 @@
 let _cloudCommunityCache = [];
 let _cloudPrivateCache = [];
 
-const ADMIN_EMAILS = ["chiarettafrancescon003@gmail.com", "chiarettafrancescon@gmail.com", "chiara@eventiapp.com"];
+const ADMIN_EMAILS = ["chiarettafrancescon003@gmail.com"];
 
 const DEFAULT_USERS = [
   {
@@ -24,27 +24,6 @@ const DEFAULT_USERS = [
     dateOfBirth: "1998-05-15",
     points: 500,
     collabId: "COL-100001",
-    badges: ["Fondatore", "Super Organizzatore", "Admin Master"],
-    avatar: "/logo.jpg"
-  },
-  {
-    id: "org_admin_2",
-    name: "Chiara",
-    cognome: "Francescon",
-    email: "chiarettafrancescon@gmail.com",
-    phone: "3339998877",
-    comune: "Comignago",
-    regione: "Piemonte",
-    password: "password123",
-    role: "admin",
-    accountStatus: "approved",
-    emailVerified: true,
-    canLogin: true,
-    interests: ["Feste di paese", "Musica", "Street food", "Motori"],
-    premium: true,
-    dateOfBirth: "1998-05-15",
-    points: 500,
-    collabId: "COL-100002",
     badges: ["Fondatore", "Super Organizzatore", "Admin Master"],
     avatar: "/logo.jpg"
   }
@@ -434,7 +413,7 @@ class LocalDB {
     }
 
     // Admin master auto-approval
-    if (cleanEmail === "chiarettafrancescon@gmail.com" || cleanEmail === "chiara@eventiapp.com") {
+    if (cleanEmail === "chiarettafrancescon003@gmail.com") {
       isApproved = true;
     }
 
