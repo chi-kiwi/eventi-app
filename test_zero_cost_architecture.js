@@ -36,7 +36,7 @@ async function runZeroCostArchitectureTests() {
   assert("Database eventi di produzione privo di eventi finti/demo", events.length === 0);
 
   const users = db.getUsers();
-  assert("Database utenti contiene solo l'admin master chiarettafrancescon@gmail.com", users.length >= 1 && users.some(u => u.email === "chiarettafrancescon@gmail.com"));
+  assert("Database utenti contiene solo l'admin master chiarettafrancescon003@gmail.com", users.length >= 1 && users.some(u => u.email === "chiarettafrancescon003@gmail.com"));
 
   // 2. Admin Approval Registration Test
   console.log("\n--- TEST B: REGISTRAZIONE CON APPROVAZIONE MANUALE ADMIN ---");
@@ -61,7 +61,7 @@ async function runZeroCostArchitectureTests() {
 
   // 3. Admin Approval Action
   console.log("\n--- TEST C: APPROVAZIONE UTENTE DA PARTE DELL'ADMIN ---");
-  const adminUser = users.find(u => u.email === "chiarettafrancescon@gmail.com");
+  const adminUser = users.find(u => u.email === "chiarettafrancescon003@gmail.com");
   const pendingUser = pendingList.find(u => u.email === "mario.rossi.test@example.com");
 
   const approveRes = db.approveUser(pendingUser.id, adminUser.id);

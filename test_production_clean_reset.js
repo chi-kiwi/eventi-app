@@ -47,8 +47,8 @@ assert("Il reset di localStorage NON rigenera utenti finti o demo", postMockUser
 
 // TEST C — Creazione Evento Reale Autorizzato
 console.log("\n--- TEST C: Primo Evento Reale ---");
-const realOrganizer = db.getUsers().find(u => u.role === 'organizzatore');
-assert("Account organizzatore reale verificato (Chiara Francescon)", !!realOrganizer && realOrganizer.email === "chiara@eventiapp.com");
+const realOrganizer = db.getUsers().find(u => u.role === 'admin' || u.role === 'organizzatore');
+assert("Account organizzatore reale verificato (Chiara Francescon)", !!realOrganizer && realOrganizer.email === "chiarettafrancescon003@gmail.com");
 
 const newRealEvt = db.createEvent({
   title: "Gran Galà dell'Olio Nuove Produzioni",
@@ -74,7 +74,7 @@ assert("L'evento reale è persistito ed è accessibile a tutti i browser", !!cre
 // TEST D — Elenco Utenti Pulito
 console.log("\n--- TEST D: Verifica Elenco Account Pulito ---");
 const finalUsers = db.getUsers();
-const hasOnlyRealAdmins = finalUsers.every(u => u.email === "chiara@eventiapp.com" || u.role !== "admin");
+const hasOnlyRealAdmins = finalUsers.every(u => u.email === "chiarettafrancescon003@gmail.com" || u.role !== "admin");
 assert("L'elenco degli utenti contiene solo account autorizzati", hasOnlyRealAdmins && finalUsers.length >= 1);
 
 console.log("\n=================================================================");
